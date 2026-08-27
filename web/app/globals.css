@@ -1,8 +1,44 @@
 @import "tailwindcss";
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Modernist — brand tokens, mirrored from the Yahzel design system
+   (_ds/modernist). Source of truth for the mark's colours; the SVGs in
+   /public/brand bake these same values in so they stay correct when used
+   as <img>, favicon, or app-icon tiles.
+   ────────────────────────────────────────────────────────────────────── */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Core roles */
+  --yz-bg: #f3f2f2;
+  --yz-surface: #eae9e9;
+  --yz-ink: #201e1d;
+  --yz-accent: #ec3013;
+  --yz-accent-2: #e15b47;
+  --yz-divider: color-mix(in srgb, #201e1d 40%, transparent);
+
+  /* Neutral ramp */
+  --yz-neutral-100: #f8f4f4;
+  --yz-neutral-200: #eae7e7;
+  --yz-neutral-300: #d7d3d3;
+  --yz-neutral-400: #bab6b6;
+  --yz-neutral-500: #9b9797;
+  --yz-neutral-600: #7d7979;
+  --yz-neutral-700: #605d5d;
+  --yz-neutral-800: #444141;
+  --yz-neutral-900: #2d2b2b;
+
+  /* Accent ramp */
+  --yz-accent-100: #fff2ef;
+  --yz-accent-200: #ffe0d9;
+  --yz-accent-300: #ffc4b8;
+  --yz-accent-400: #ff9783;
+  --yz-accent-500: #ff563c;
+  --yz-accent-600: #dd2b0f;
+  --yz-accent-700: #ae1800;
+  --yz-accent-800: #7c1405;
+  --yz-accent-900: #4d170e;
 }
 
 @theme inline {
@@ -10,6 +46,26 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Brand scale exposed to Tailwind: bg-yz-ink, text-yz-accent, … */
+  --color-yz-bg: var(--yz-bg);
+  --color-yz-surface: var(--yz-surface);
+  --color-yz-ink: var(--yz-ink);
+  --color-yz-accent: var(--yz-accent);
+  --color-yz-accent-2: var(--yz-accent-2);
+  --color-yz-neutral-100: var(--yz-neutral-100);
+  --color-yz-neutral-200: var(--yz-neutral-200);
+  --color-yz-neutral-300: var(--yz-neutral-300);
+  --color-yz-neutral-400: var(--yz-neutral-400);
+  --color-yz-neutral-500: var(--yz-neutral-500);
+  --color-yz-neutral-600: var(--yz-neutral-600);
+  --color-yz-neutral-700: var(--yz-neutral-700);
+  --color-yz-neutral-800: var(--yz-neutral-800);
+  --color-yz-neutral-900: var(--yz-neutral-900);
+  --color-yz-accent-600: var(--yz-accent-600);
+  --color-yz-accent-700: var(--yz-accent-700);
+
+  --font-brand: var(--font-archivo);
 }
 
 @media (prefers-color-scheme: dark) {
