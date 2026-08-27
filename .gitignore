@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Next.js
+web/.next/
+web/out/
+
+# Expo / React Native
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+
+# Build output
+node/dist/
+
+# Logs
+*.log
+
+# TypeScript
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
