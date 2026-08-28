@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function Register() {
+  const router = useRouter();
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,9 +50,12 @@ export default function Register() {
         return;
       }
 
-      // Later:
-      // redirect to email verification page.
-      console.log(data);
+      sessionStorage.setItem(
+        "yahzel_verification_user",
+        JSON.stringify(data.user),
+      );
+
+      router.push("/auth/verification");
     } catch {
       setError("Unable to connect to the server.");
     } finally {

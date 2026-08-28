@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable("users", (table) => {
+  await knex.schema.createTable("profiles", (table) => {
     table.increments("id").primary();
 
     table.string("full_name", 150).notNullable();
@@ -23,5 +23,5 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists("users");
+  await knex.schema.dropTableIfExists("profiles");
 }

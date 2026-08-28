@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function Login() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -37,8 +40,20 @@ export default function Login() {
         return;
       }
 
-      // Authentication/session handling will be connected here.
-      console.log(data);
+      if (data.requiresVerification) {
+        sessionStorage.setItem(
+          "yahzel_verification_user",
+          JSON.stringify(data.user),
+        );
+
+        router.push("/auth/verification");
+        return;
+      }
+
+      localStorage.setItem("yahzel_token", data.token);
+      localStorage.setItem("yahzel_user", JSON.stringify(data.user));
+
+      router.push("/dashboard");
     } catch {
       setError("Unable to connect to the server.");
     } finally {
