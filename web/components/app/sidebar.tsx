@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { YahzelIcon } from "@/components/yahzel-icon";
-import { NAV_ITEMS, SETTINGS_ITEM } from "./nav";
-import { useProfile } from "./profile-provider";
-import { Avatar } from "./avatar";
+import { NAV_ITEMS, SETTINGS_ITEM } from "./profile/nav";
+import { useProfile } from "./profile/profile-provider";
+import { Avatar } from "./profile/avatar";
 
 export function Sidebar({
   onNavigate,

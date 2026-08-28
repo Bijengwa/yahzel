@@ -3,10 +3,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { YahzelIcon } from "@/components/yahzel-icon";
-import { Avatar } from "./avatar";
-import { CompletionBanner } from "./completion-banner";
+import { Avatar } from "./profile/avatar";
+import { CompletionBanner } from "./profile/completion-banner";
 import { Sidebar } from "./sidebar";
-import { useProfile } from "./profile-provider";
+import { useProfile } from "./profile/profile-provider";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { profile, loading, error, refresh } = useProfile();

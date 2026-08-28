@@ -4,9 +4,9 @@ import Link from "next/link";
 
 import { StatusPill } from "@/components/ui/status-pill";
 import { formatJoinedDate } from "@/lib/format";
-import { Avatar } from "./avatar";
-import { CompletionChecklist, CompletionMeter } from "./completion-meter";
-import { useProfile } from "./profile-provider";
+import { Avatar } from "./profile/avatar";
+import { CompletionChecklist, CompletionMeter } from "./profile/completion-meter";
+import { useProfile } from "./profile/profile-provider";
 
 const ENTRY_POINTS = [
   {

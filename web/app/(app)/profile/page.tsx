@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ProfileScreen } from "@/components/app/profile-screen";
+import { ProfileScreen } from "@/components/app/profile/profile-screen";
 
 export const metadata: Metadata = {
   title: "Profile",

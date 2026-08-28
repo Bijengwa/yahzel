@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/app/app-shell";
-import { ProfileProvider } from "@/components/app/profile-provider";
+import { ProfileProvider } from "@/components/app/profile/profile-provider";
 
 /**
  * Everything behind sign-in shares one frame and one profile fetch. The route
