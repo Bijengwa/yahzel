@@ -18,6 +18,9 @@ mobile/web-build/
 # Build output
 node/dist/
 
+# node 
+node/.env
+
 # Logs
 *.log
 

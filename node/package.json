@@ -4,17 +4,31 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "tsx node_modules/knex/bin/cli.js migrate:latest",
+    "db:migrate:rollback": "tsx node_modules/knex/bin/cli.js migrate:rollback",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
-    "express": "^5.2.1"
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "knex": "^3.3.0",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^26.4.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
