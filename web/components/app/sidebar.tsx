@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { YahzelIcon } from "@/components/yahzel-icon";
 import { NAV_ITEMS, SETTINGS_ITEM } from "./profile/nav";
 import { useProfile } from "./profile/profile-provider";
 import { Avatar } from "./profile/avatar";
@@ -18,7 +17,6 @@ export function Sidebar({
   const { profile } = useProfile();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [topHovered, setTopHovered] = useState(false);
 
   function handleNavigate() {
     onNavigate?.();
@@ -26,86 +24,32 @@ export function Sidebar({
 
   return (
     <div
-      className={`flex h-full flex-col bg-white transition-[width] duration-200 ${
+      className={`flex h-full flex-col bg-yz-panel transition-[width] duration-200 ${
         collapsed ? "w-[72px]" : "w-[236px]"
       }`}
     >
-      {/* Brand / collapse control */}
-      <div
-        className="relative flex h-16 shrink-0 items-center border-b border-yz-neutral-200"
-        onMouseEnter={() => setTopHovered(true)}
-        onMouseLeave={() => setTopHovered(false)}
-      >
-        <div
-          className={`flex items-center ${
-            collapsed
-              ? "w-full justify-center"
-              : "w-full justify-between px-4"
-          }`}
+      {/* Collapse control — brand now lives in the top workspace bar, so
+          this rail is pure navigation chrome. */}
+      <div className="flex h-12 shrink-0 items-center justify-end border-b border-yz-neutral-200 px-2">
+        <button
+          type="button"
+          onClick={() => setCollapsed((current) => !current)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="flex h-9 w-9 items-center justify-center text-yz-ink transition-colors hover:bg-yz-neutral-100"
         >
-          <div
-            className={`flex items-center gap-2.5 ${
-              collapsed && topHovered ? "opacity-0" : "opacity-100"
-            }`}
+          <svg
+            viewBox="0 0 20 20"
+            width="18"
+            height="18"
+            aria-hidden="true"
           >
-            <YahzelIcon
-              size={27}
-              className="shrink-0 text-yz-ink"
-              title={null}
-              maskId="yz-sidebar-mark"
+            <path
+              d="M3 5h14M3 10h14M3 15h14"
+              stroke="currentColor"
+              strokeWidth="1.6"
             />
-
-            {!collapsed && (
-              <span className="font-brand text-[17px] leading-none font-extrabold tracking-tight text-yz-ink">
-                Yahzel
-              </span>
-            )}
-          </div>
-
-          {!collapsed && (
-            <button
-              type="button"
-              onClick={() => setCollapsed(true)}
-              aria-label="Collapse sidebar"
-              className="flex h-9 w-9 items-center justify-center text-yz-ink transition-colors hover:bg-yz-neutral-100"
-            >
-              <svg
-                viewBox="0 0 20 20"
-                width="19"
-                height="19"
-                aria-hidden="true"
-              >
-                <path
-                  d="M3 5h14M3 10h14M3 15h14"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                />
-              </svg>
-            </button>
-          )}
-        </div>
-
-        {collapsed && topHovered && (
-          <button
-            type="button"
-            onClick={() => setCollapsed(false)}
-            aria-label="Expand sidebar"
-            className="absolute inset-0 flex items-center justify-center bg-white text-yz-ink"
-          >
-            <svg
-              viewBox="0 0 20 20"
-              width="20"
-              height="20"
-              aria-hidden="true"
-            >
-              <path
-                d="M3 5h14M3 10h14M3 15h14"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              />
-            </svg>
-          </button>
-        )}
+          </svg>
+        </button>
       </div>
 
       {/* Main navigation */}

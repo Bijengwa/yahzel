@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
 import { ApiError } from "@/lib/api";
 import { changePassword } from "@/lib/profile";
+import { ProfileSection } from "../profile/profile-section";
+import {
+  MoonIcon,
+  SunIcon,
+  useTheme,
+} from "@/components/theme/theme-provider";
 import { LogoutDialog } from "./logout-dialog";
 
 type Status = { tone: "ok" | "error"; message: string } | null;
@@ -16,11 +22,76 @@ const EMPTY = {
   confirmPassword: "",
 };
 
-export function SettingsScreen() {
+const THEME_OPTIONS = [
+  {
+    value: "light" as const,
+    label: "Light",
+    description: "Bright surfaces for daylight.",
+    icon: SunIcon,
+  },
+  {
+    value: "dark" as const,
+    label: "Dark",
+    description: "Warm dark surfaces, easy at night.",
+    icon: MoonIcon,
+  },
+];
+
+function AppearanceSection() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <ProfileSection
+      id="appearance"
+      title="Appearance"
+      description="Choose how Yahzel looks on this device."
+      editing={false}
+    >
+      <div
+        role="radiogroup"
+        aria-label="Theme"
+        className="grid max-w-sm grid-cols-2 gap-3"
+      >
+        {THEME_OPTIONS.map((option) => {
+          const active = theme === option.value;
+          const Icon = option.icon;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => setTheme(option.value)}
+              className={`flex flex-col items-start gap-2 border px-4 py-3.5 text-left transition-colors duration-150 ${
+                active
+                  ? "border-yz-ink bg-yz-neutral-100"
+                  : "border-yz-neutral-300 hover:border-yz-ink"
+              }`}
+            >
+              <Icon
+                className={active ? "text-yz-ink" : "text-yz-neutral-600"}
+              />
+
+              <span className="text-[13px] font-bold text-yz-ink">
+                {option.label}
+              </span>
+
+              <span className="text-[12px] leading-5 text-yz-neutral-600">
+                {option.description}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </ProfileSection>
+  );
+}
+
+function PasswordSection() {
   const [form, setForm] = useState(EMPTY);
   const [status, setStatus] = useState<Status>(null);
   const [saving, setSaving] = useState(false);
-  const [logoutOpen, setLogoutOpen] = useState(false);
 
   const filled =
     form.currentPassword && form.newPassword && form.confirmPassword;
@@ -57,116 +128,105 @@ export function SettingsScreen() {
   }
 
   return (
-    <div className="space-y-6">
+    <ProfileSection
+      id="password"
+      title="Password"
+      description="You will stay signed in on this device."
+      editing={false}
+      status={status}
+    >
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
+        <div className="grid max-w-xl gap-4">
+          <TextField
+            id="currentPassword"
+            type="password"
+            label="Current password"
+            autoComplete="current-password"
+            value={form.currentPassword}
+            onChange={(event) =>
+              update("currentPassword", event.target.value)
+            }
+          />
+
+          <TextField
+            id="newPassword"
+            type="password"
+            label="New password"
+            autoComplete="new-password"
+            hint="At least 8 characters."
+            value={form.newPassword}
+            onChange={(event) => update("newPassword", event.target.value)}
+          />
+
+          <TextField
+            id="confirmPassword"
+            type="password"
+            label="Confirm new password"
+            autoComplete="new-password"
+            value={form.confirmPassword}
+            onChange={(event) =>
+              update("confirmPassword", event.target.value)
+            }
+          />
+        </div>
+
+        <div className="mt-5 border-t border-yz-neutral-200 pt-4">
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={saving || !filled}
+          >
+            {saving ? "Changing…" : "Change password"}
+          </Button>
+        </div>
+      </form>
+    </ProfileSection>
+  );
+}
+
+function SessionSection({ onLogoutClick }: { onLogoutClick: () => void }) {
+  return (
+    <ProfileSection
+      id="session"
+      title="Session"
+      description="Sign out of Yahzel on this device."
+      editing={false}
+    >
+      <Button variant="danger" onClick={onLogoutClick}>
+        Log out
+      </Button>
+    </ProfileSection>
+  );
+}
+
+export function SettingsScreen() {
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
+  return (
+    <div className="space-y-5">
       <header>
         <p className="text-[11px] font-bold tracking-[0.14em] text-yz-accent uppercase">
           Settings
         </p>
 
-        <h1 className="font-brand mt-1.5 text-[26px] leading-tight font-extrabold tracking-tight text-yz-ink sm:text-[30px]">
+        <h1 className="font-brand mt-1 text-[22px] leading-tight font-extrabold tracking-tight text-yz-ink sm:text-[24px]">
           Account
         </h1>
 
-        <p className="mt-2 max-w-xl text-[14px] leading-6 text-yz-neutral-600">
-          Your sign-in credentials and session. Your name, contact details and
-          picture live in Profile.
+        <p className="mt-1.5 text-[13px] leading-6 text-yz-neutral-600">
+          Appearance, sign-in credentials and session for this device. Your
+          name, contact details and picture live in Profile.
         </p>
       </header>
 
-      <section className="border border-yz-neutral-300 bg-white">
-        <div className="border-b border-yz-neutral-200 px-6 py-5 sm:px-8">
-          <h2 className="font-brand text-[17px] leading-tight font-extrabold tracking-tight text-yz-ink">
-            Change password
-          </h2>
-
-          <p className="mt-1 text-[13px] leading-6 text-yz-neutral-600">
-            You will stay signed in on this device.
-          </p>
-        </div>
-
-        <form
-          className="px-6 py-6 sm:px-8"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submit();
-          }}
-        >
-          {status && (
-            <p
-              role="status"
-              className={`mb-5 border px-4 py-3 text-[13px] ${
-                status.tone === "ok"
-                  ? "border-yz-ok-line bg-yz-ok-bg text-yz-ok-ink"
-                  : "border-yz-danger-line bg-yz-danger-bg text-yz-danger-ink"
-              }`}
-            >
-              {status.message}
-            </p>
-          )}
-
-          <div className="grid max-w-xl gap-5">
-            <TextField
-              id="currentPassword"
-              type="password"
-              label="Current password"
-              autoComplete="current-password"
-              value={form.currentPassword}
-              onChange={(event) =>
-                update("currentPassword", event.target.value)
-              }
-            />
-
-            <TextField
-              id="newPassword"
-              type="password"
-              label="New password"
-              autoComplete="new-password"
-              hint="At least 8 characters."
-              value={form.newPassword}
-              onChange={(event) => update("newPassword", event.target.value)}
-            />
-
-            <TextField
-              id="confirmPassword"
-              type="password"
-              label="Confirm new password"
-              autoComplete="new-password"
-              value={form.confirmPassword}
-              onChange={(event) =>
-                update("confirmPassword", event.target.value)
-              }
-            />
-          </div>
-
-          <div className="mt-7 border-t border-yz-neutral-200 pt-5">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={saving || !filled}
-            >
-              {saving ? "Changing…" : "Change password"}
-            </Button>
-          </div>
-        </form>
-      </section>
-
-      <section className="border border-yz-neutral-300 bg-white">
-        <div className="border-b border-yz-neutral-200 px-6 py-5 sm:px-8">
-          <h2 className="font-brand text-[17px] leading-tight font-extrabold tracking-tight text-yz-ink">
-            Session
-          </h2>
-
-          <p className="mt-1 text-[13px] leading-6 text-yz-neutral-600">
-            Sign out of Yahzel on this device.
-          </p>
-        </div>
-
-        <div className="px-6 py-6 sm:px-8">
-          <Button variant="danger" onClick={() => setLogoutOpen(true)}>
-            Log out
-          </Button>
-        </div>
-      </section>
+      <AppearanceSection />
+      <PasswordSection />
+      <SessionSection onLogoutClick={() => setLogoutOpen(true)} />
 
       <LogoutDialog open={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </div>

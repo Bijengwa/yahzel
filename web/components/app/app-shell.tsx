@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { YahzelIcon } from "@/components/yahzel-icon";
+import { ThemeToggleButton } from "@/components/theme/theme-provider";
 import { Avatar } from "./profile/avatar";
 import { CompletionBanner } from "./profile/completion-banner";
 import { Sidebar } from "./sidebar";
@@ -47,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (error || !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-yz-bg px-6">
-        <div className="w-full max-w-sm border border-yz-neutral-300 bg-white p-7 text-center">
+        <div className="w-full max-w-sm border border-yz-neutral-300 bg-yz-panel p-7 text-center">
           <YahzelIcon
             size={28}
             className="mx-auto text-yz-ink"
@@ -65,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => void refresh()}
-            className="mt-5 w-full bg-yz-ink px-4 py-2.5 text-[13px] font-bold text-white transition-colors duration-150 hover:bg-yz-neutral-800"
+            className="mt-5 w-full bg-yz-ink px-4 py-2.5 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
           >
             Try again
           </button>
@@ -76,37 +77,22 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-yz-bg">
-      {/* Desktop application shell */}
-      <div className="hidden lg:flex">
-        <aside className="sticky top-0 h-screen shrink-0">
-          <Sidebar />
-        </aside>
-
-        <div className="min-w-0 flex-1">
-          <main className="w-full px-6 py-7 xl:px-8 xl:py-8">
-            <CompletionBanner />
-
-            <div className="mt-5">
-              {children}
-            </div>
-          </main>
-        </div>
-      </div>
-
-      {/* Mobile application shell */}
-      <div className="lg:hidden">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-yz-neutral-200 bg-white px-4">
+      {/* Thin top workspace bar — the one persistent piece of chrome shared
+          by every breakpoint. Brand lives here, not in the sidebar, so the
+          sidebar can stay a pure nav rail. */}
+      <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-yz-neutral-200 bg-yz-panel px-3 lg:px-4">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
             aria-expanded={drawerOpen}
-            className="-ml-2 flex h-10 w-10 items-center justify-center text-yz-ink"
+            className="flex h-9 w-9 items-center justify-center text-yz-ink lg:hidden"
           >
             <svg
               viewBox="0 0 20 20"
-              width="20"
-              height="20"
+              width="19"
+              height="19"
               aria-hidden="true"
             >
               <path
@@ -119,49 +105,63 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <span className="flex items-center gap-2">
             <YahzelIcon
-              size={22}
+              size={20}
               className="text-yz-ink"
               title={null}
-              maskId="yz-mark-mobile-header"
+              maskId="yz-topbar-mark"
             />
 
-            <span className="font-brand text-[15px] font-extrabold tracking-tight text-yz-ink">
+            <span className="font-brand text-[14px] font-extrabold tracking-tight text-yz-ink">
               Yahzel
             </span>
           </span>
+        </div>
 
-          <Avatar
-            fullName={profile.fullName}
-            src={profile.profilePictureUrl}
-            size={30}
-          />
-        </header>
+        <div className="flex items-center gap-2">
+          <ThemeToggleButton />
 
-        {drawerOpen && (
-          <div className="fixed inset-0 z-40">
-            <button
-              type="button"
-              aria-label="Close menu"
-              onClick={() => setDrawerOpen(false)}
-              className="absolute inset-0 h-full w-full bg-yz-ink/40"
+          <span className="lg:hidden">
+            <Avatar
+              fullName={profile.fullName}
+              src={profile.profilePictureUrl}
+              size={28}
             />
+          </span>
+        </div>
+      </header>
 
-            <div className="absolute inset-y-0 left-0 w-[236px] max-w-[85vw] border-r border-yz-neutral-200 bg-white shadow-[0_0_60px_-10px_rgba(32,30,29,0.4)]">
-              <Sidebar
-                onNavigate={() => setDrawerOpen(false)}
-              />
+      <div className="flex">
+        <aside className="sticky top-12 hidden h-[calc(100vh-3rem)] shrink-0 lg:block">
+          <Sidebar />
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          <main className="w-full px-4 py-4 sm:px-5 sm:py-5 xl:px-6 xl:py-6">
+            <CompletionBanner />
+
+            <div className="mt-4">
+              {children}
             </div>
-          </div>
-        )}
-
-        <main className="w-full px-4 py-6 sm:px-6">
-          <CompletionBanner />
-
-          <div className="mt-5">
-            {children}
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
+
+      {drawerOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={() => setDrawerOpen(false)}
+            className="absolute inset-0 h-full w-full bg-black/40"
+          />
+
+          <div className="absolute top-12 bottom-0 left-0 w-[236px] max-w-[85vw] border-r border-yz-neutral-200 bg-yz-panel shadow-[0_0_60px_-10px_rgba(0,0,0,0.45)]">
+            <Sidebar
+              onNavigate={() => setDrawerOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

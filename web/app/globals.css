@@ -13,7 +13,9 @@
   /* Core roles */
   --yz-bg: #f3f2f2;
   --yz-surface: #eae9e9;
+  --yz-panel: #ffffff;
   --yz-ink: #201e1d;
+  --yz-ink-contrast: #ffffff;
   --yz-accent: #ec3013;
   --yz-accent-2: #e15b47;
   --yz-divider: color-mix(in srgb, #201e1d 40%, transparent);
@@ -53,6 +55,41 @@
   --yz-danger-ink: #a3230c;
 }
 
+/* Dark theme — a warm, comfortable dark surface rather than pure black.
+   Applied only inside the authenticated app shell (see ThemeProvider); the
+   pre-authentication screens are unaffected. Roles keep the same meaning as
+   :root above, just inverted for a dark ground. */
+.dark {
+  --yz-bg: #18130f;
+  --yz-surface: #201a15;
+  --yz-panel: #241d18;
+  --yz-ink: #f3ece4;
+  --yz-ink-contrast: #18130f;
+  --yz-accent: #ff5b3d;
+  --yz-accent-2: #ff8064;
+  --yz-divider: color-mix(in srgb, #f3ece4 16%, transparent);
+
+  --yz-neutral-100: #221c17;
+  --yz-neutral-200: #2b241e;
+  --yz-neutral-300: #3c332b;
+  --yz-neutral-400: #59493c;
+  --yz-neutral-500: #7a685a;
+  --yz-neutral-600: #9c8b7c;
+  --yz-neutral-700: #bcae9f;
+  --yz-neutral-800: #ddd2c5;
+  --yz-neutral-900: #f3ece4;
+
+  --yz-warn-bg: #332711;
+  --yz-warn-line: #6b5322;
+  --yz-warn-ink: #eec981;
+  --yz-ok-bg: #142c1f;
+  --yz-ok-line: #2b5b41;
+  --yz-ok-ink: #8fd6ac;
+  --yz-danger-bg: #331813;
+  --yz-danger-line: #6b2e22;
+  --yz-danger-ink: #ff9c85;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -62,7 +99,9 @@
   /* Brand scale exposed to Tailwind: bg-yz-ink, text-yz-accent, … */
   --color-yz-bg: var(--yz-bg);
   --color-yz-surface: var(--yz-surface);
+  --color-yz-panel: var(--yz-panel);
   --color-yz-ink: var(--yz-ink);
+  --color-yz-ink-contrast: var(--yz-ink-contrast);
   --color-yz-accent: var(--yz-accent);
   --color-yz-accent-2: var(--yz-accent-2);
   --color-yz-neutral-100: var(--yz-neutral-100);

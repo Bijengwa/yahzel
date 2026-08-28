@@ -31,7 +31,7 @@ export function DashboardScreen() {
 
   return (
     <div className="space-y-6">
-      <section className="border border-yz-neutral-300 bg-white">
+      <section className="border border-yz-neutral-300 bg-yz-panel">
         <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6 sm:p-8">
           <Avatar
             fullName={profile.fullName}

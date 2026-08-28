@@ -74,7 +74,7 @@ export function CompletionChecklist({
             aria-hidden="true"
             className={`flex h-4 w-4 shrink-0 items-center justify-center border text-[10px] font-bold ${
               item.complete
-                ? "border-yz-ink bg-yz-ink text-white"
+                ? "border-yz-ink bg-yz-ink text-yz-ink-contrast"
                 : "border-yz-neutral-400 text-transparent"
             }`}
           >

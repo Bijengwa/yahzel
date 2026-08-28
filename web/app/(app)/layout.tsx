@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app/app-shell";
 import { ProfileProvider } from "@/components/app/profile/profile-provider";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 
 /**
  * Everything behind sign-in shares one frame and one profile fetch. The route
@@ -12,8 +13,10 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ProfileProvider>
-      <AppShell>{children}</AppShell>
-    </ProfileProvider>
+    <ThemeProvider>
+      <ProfileProvider>
+        <AppShell>{children}</AppShell>
+      </ProfileProvider>
+    </ThemeProvider>
   );
 }

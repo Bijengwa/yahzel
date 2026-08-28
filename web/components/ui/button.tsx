@@ -4,13 +4,13 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-yz-ink text-white border border-yz-ink hover:bg-yz-neutral-800 hover:border-yz-neutral-800",
+    "bg-yz-ink text-yz-ink-contrast border border-yz-ink hover:opacity-90",
   secondary:
-    "bg-white text-yz-ink border border-yz-neutral-300 hover:border-yz-ink",
+    "bg-yz-panel text-yz-ink border border-yz-neutral-300 hover:border-yz-ink",
   ghost:
     "bg-transparent text-yz-neutral-700 border border-transparent hover:text-yz-ink",
   danger:
-    "bg-white text-yz-danger-ink border border-yz-danger-line hover:bg-yz-danger-bg",
+    "bg-yz-panel text-yz-danger-ink border border-yz-danger-line hover:bg-yz-danger-bg",
 };
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {

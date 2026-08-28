@@ -58,7 +58,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-yz-ink/40 p-0 sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -71,7 +71,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby="yz-modal-title"
         tabIndex={-1}
-        className="w-full max-w-md border border-yz-neutral-300 bg-white p-6 shadow-[0_24px_60px_-24px_rgba(32,30,29,0.45)] outline-none sm:p-7"
+        className="w-full max-w-md border border-yz-neutral-300 bg-yz-panel p-6 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.45)] outline-none sm:p-7"
       >
         <h2
           id="yz-modal-title"

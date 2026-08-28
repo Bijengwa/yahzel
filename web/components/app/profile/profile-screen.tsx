@@ -17,7 +17,7 @@ export function ProfileScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="border border-yz-neutral-300 bg-white p-6 sm:p-8">
+      <header className="border border-yz-neutral-300 bg-yz-panel p-6 sm:p-8">
         <p className="text-[11px] font-bold tracking-[0.14em] text-yz-accent uppercase">
           Personal profile
         </p>

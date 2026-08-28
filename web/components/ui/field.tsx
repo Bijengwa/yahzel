@@ -3,7 +3,7 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
 const CONTROL =
-  "w-full border bg-white px-3 py-2.5 text-[14px] text-yz-ink outline-none transition-colors duration-150 disabled:bg-yz-neutral-100 disabled:text-yz-neutral-600";
+  "w-full border bg-yz-panel px-3 py-2.5 text-[14px] text-yz-ink outline-none transition-colors duration-150 disabled:bg-yz-neutral-100 disabled:text-yz-neutral-600";
 
 function borderFor(error?: string): string {
   return error
