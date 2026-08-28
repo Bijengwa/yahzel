@@ -1,18 +1,10 @@
 import { db } from "../db/knex.js";
+import { PROFILES_TABLE, type ProfileRecord } from "../db/profile-record.js";
 
-export type ProfileRecord = {
-  id: number;
-  full_name: string;
-  email: string;
-  password_hash: string;
-  email_verified: boolean;
-  verification_otp: string | null;
-  verification_otp_expires_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+export type { ProfileRecord };
 
-const TABLE = "profiles";
+const TABLE = PROFILES_TABLE;
+
 
 export function findUserByEmail(email: string) {
   return db<ProfileRecord>(TABLE).where({ email }).first();
@@ -22,25 +14,32 @@ export function findUserById(id: number) {
   return db<ProfileRecord>(TABLE).where({ id }).first();
 }
 
+/**
+ * Usernames are assigned by Yahzel at registration, never chosen on the form,
+ * so this takes one rather than deriving it - see shared/username.ts.
+ */
 export async function createUser(input: {
   fullName: string;
   email: string;
+  username: string;
   passwordHash: string;
 }): Promise<
   Pick<
     ProfileRecord,
-    "id" | "full_name" | "email" | "email_verified" | "created_at"
+    "id" | "full_name" | "username" | "email" | "email_verified" | "created_at"
   >
 > {
   const [user] = await db<ProfileRecord>(TABLE)
     .insert({
       full_name: input.fullName,
       email: input.email,
+      username: input.username,
       password_hash: input.passwordHash,
     })
     .returning([
       "id",
       "full_name",
+      "username",
       "email",
       "email_verified",
       "created_at",
@@ -51,6 +50,25 @@ export async function createUser(input: {
   }
 
   return user;
+}
+
+export async function usernameExists(username: string): Promise<boolean> {
+  const row = await db<ProfileRecord>(TABLE)
+    .where({ username })
+    .select("id")
+    .first();
+
+  return Boolean(row);
+}
+
+/** Replaces the stored credential. Hashing happens in the service. */
+export async function updatePasswordHash(
+  userId: number,
+  passwordHash: string,
+): Promise<void> {
+  await db<ProfileRecord>(TABLE)
+    .where({ id: userId })
+    .update({ password_hash: passwordHash, updated_at: db.fn.now() });
 }
 
 export async function saveVerificationOtp(

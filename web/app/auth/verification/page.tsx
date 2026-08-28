@@ -31,6 +31,9 @@ export default function VerificationPage() {
     }
 
     try {
+      // The handoff value can only be read after mount: touching
+      // sessionStorage during render would break hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUser(JSON.parse(stored));
     } catch {
       sessionStorage.removeItem("yahzel_verification_user");

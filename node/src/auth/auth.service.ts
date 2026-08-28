@@ -7,7 +7,11 @@ import {
   findUserById,
   markEmailAsVerified,
   saveVerificationOtp,
+  updatePasswordHash,
+  usernameExists,
 } from "./auth.repository.js";
+
+import { allocateUsername } from "../shared/username.js";
 
 import {
   validateLoginInput,
@@ -93,9 +97,17 @@ export async function registerUser(
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
+  // Yahzel picks the handle; the person can change it later from Profile.
+  const username = await allocateUsername(
+    fullName.trim(),
+    normalizedEmail,
+    usernameExists,
+  );
+
   const user = await createUser({
     fullName: fullName.trim(),
     email: normalizedEmail,
+    username,
     passwordHash,
   });
 
@@ -107,6 +119,7 @@ export async function registerUser(
     user: {
       id: user.id,
       fullName: user.full_name,
+      username: user.username,
       email: user.email,
     },
   };
@@ -142,6 +155,7 @@ export async function loginUser(input: Partial<LoginInput>) {
       user: {
         id: user.id,
         fullName: user.full_name,
+        username: user.username,
         email: user.email,
       },
     };
@@ -155,6 +169,7 @@ export async function loginUser(input: Partial<LoginInput>) {
     user: {
       id: user.id,
       fullName: user.full_name,
+      username: user.username,
       email: user.email,
     },
   };
@@ -178,6 +193,7 @@ export async function verifyUserEmail(
       user: {
         id: user.id,
         fullName: user.full_name,
+        username: user.username,
         email: user.email,
       },
     };
@@ -214,6 +230,7 @@ export async function verifyUserEmail(
     user: {
       id: user.id,
       fullName: user.full_name,
+      username: user.username,
       email: user.email,
     },
   };
@@ -235,4 +252,55 @@ export async function resendVerificationCode(userId: number) {
   return {
     message: "A new verification code has been generated.",
   };
+}
+/**
+ * Changing a password from Settings. The current password is required so a
+ * borrowed session cannot lock the owner out of their own account.
+ */
+export async function changePassword(
+  userId: number,
+  input: {
+    currentPassword?: unknown;
+    newPassword?: unknown;
+    confirmPassword?: unknown;
+  },
+) {
+  const currentPassword = String(input.currentPassword ?? "");
+  const newPassword = String(input.newPassword ?? "");
+  const confirmPassword = String(input.confirmPassword ?? "");
+
+  const user = await findUserById(userId);
+
+  if (!user) {
+    throw new AuthError(404, "User not found.");
+  }
+
+  if (!currentPassword) {
+    throw new AuthError(400, "Enter your current password.");
+  }
+
+  if (newPassword.length < 8) {
+    throw new AuthError(400, "Passwords must be at least 8 characters.");
+  }
+
+  if (newPassword !== confirmPassword) {
+    throw new AuthError(400, "The new passwords do not match.");
+  }
+
+  const matches = await bcrypt.compare(currentPassword, user.password_hash);
+
+  if (!matches) {
+    throw new AuthError(401, "Your current password is not correct.");
+  }
+
+  if (await bcrypt.compare(newPassword, user.password_hash)) {
+    throw new AuthError(
+      400,
+      "Choose a password you have not used here before.",
+    );
+  }
+
+  await updatePasswordHash(userId, await bcrypt.hash(newPassword, SALT_ROUNDS));
+
+  return { message: "Your password has been changed." };
 }

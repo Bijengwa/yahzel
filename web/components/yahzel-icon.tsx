@@ -17,11 +17,16 @@ const LIMBS = [
 /**
  * The limbs overlap where they meet, so `fill-rule: evenodd` would leave
  * specks in the junction — the knockout has to come from a mask. The id is
- * fixed rather than generated: every instance emits a byte-identical mask,
- * so a repeated id resolves to the first one with the same result, and the
- * component stays a Server Component with no client JS.
+ * fixed rather than generated so the component stays a Server Component with
+ * no client JS, and every instance emits a byte-identical mask.
+ *
+ * One caveat: a duplicate id resolves to whichever mask comes first in the
+ * document, and a mask inside a `display: none` subtree does not resolve at
+ * all — the mark then paints as a solid block. When two instances can be on
+ * one page and either might be hidden by a breakpoint, give at least one of
+ * them its own `maskId`.
  */
-const MASK_ID = "yz-mark-knockout";
+const DEFAULT_MASK_ID = "yz-mark-knockout";
 
 type YahzelIconProps = Omit<SVGProps<SVGSVGElement>, "width" | "height"> & {
   /** Rendered edge length in px. The mark is always square. */
@@ -37,12 +42,18 @@ type YahzelIconProps = Omit<SVGProps<SVGSVGElement>, "width" | "height"> & {
    * when the mark sits on a busy photograph.
    */
   knockout?: boolean | string;
+  /**
+   * Overrides the knockout mask id. Needed only when a page renders more than
+   * one knockout mark and one of them can be hidden — see the note above.
+   */
+  maskId?: string;
 };
 
 export function YahzelIcon({
   size = 24,
   title = "Yahzel",
   knockout = true,
+  maskId = DEFAULT_MASK_ID,
   ...props
 }: YahzelIconProps) {
   const labelling =
@@ -66,7 +77,7 @@ export function YahzelIcon({
         <>
           <defs>
             <mask
-              id={MASK_ID}
+              id={maskId}
               maskUnits="userSpaceOnUse"
               x="0"
               y="0"
@@ -83,7 +94,7 @@ export function YahzelIcon({
             width="100"
             height="100"
             fill="currentColor"
-            mask={`url(#${MASK_ID})`}
+            mask={`url(#${maskId})`}
           />
         </>
       ) : (
