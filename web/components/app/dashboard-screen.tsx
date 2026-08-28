@@ -31,7 +31,7 @@ export function DashboardScreen() {
 
   return (
     <div className="space-y-4">
-      <section className="border border-yz-neutral-300 bg-yz-panel">
+      <section className="rounded-md border border-yz-neutral-200 bg-yz-panel">
         <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5">
           <Avatar
             fullName={profile.fullName}
@@ -99,11 +99,14 @@ export function DashboardScreen() {
             </p>
           ) : (
             <>
-              <CompletionChecklist completion={profile.completion} />
+              <CompletionChecklist
+                completion={profile.completion}
+                className="mt-3"
+              />
 
               <Link
                 href="/profile"
-                className="mt-4 inline-flex bg-yz-ink px-4 py-2 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
+                className="mt-4 inline-flex rounded-sm bg-yz-ink px-4 py-2 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
               >
                 Finish your profile
               </Link>
@@ -117,7 +120,7 @@ export function DashboardScreen() {
           <Link
             key={entry.href}
             href={entry.href}
-            className="group border border-yz-neutral-300 bg-yz-panel p-5 transition-colors duration-150 hover:border-yz-ink"
+            className="group rounded-md border border-yz-neutral-200 bg-yz-panel p-4 transition-colors duration-150 hover:border-yz-neutral-400"
           >
             <h2 className="font-brand text-[15px] font-extrabold tracking-tight text-yz-ink">
               {entry.title}

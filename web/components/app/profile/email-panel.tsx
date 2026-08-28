@@ -136,7 +136,7 @@ export function EmailPanel({ profile }: { profile: Profile }) {
       )}
 
       {asking && (
-        <div className="mt-4 border border-yz-neutral-300 bg-yz-neutral-100 p-4">
+        <div className="mt-4 rounded-md border border-yz-neutral-300 bg-yz-neutral-100 p-4">
           <TextField
             id="newEmail"
             type="email"
@@ -177,7 +177,7 @@ export function EmailPanel({ profile }: { profile: Profile }) {
       )}
 
       {profile.pendingEmail && (
-        <div className="mt-4 border border-yz-warn-line bg-yz-warn-bg p-4">
+        <div className="mt-4 rounded-md border border-yz-warn-line bg-yz-warn-bg p-4">
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill tone="warn">Awaiting confirmation</StatusPill>
 

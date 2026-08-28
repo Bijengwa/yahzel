@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (error || !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-yz-bg px-6">
-        <div className="w-full max-w-sm border border-yz-neutral-300 bg-yz-panel p-7 text-center">
+        <div className="w-full max-w-sm rounded-md border border-yz-neutral-300 bg-yz-panel p-7 text-center">
           <YahzelIcon
             size={28}
             className="mx-auto text-yz-ink"
@@ -66,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => void refresh()}
-            className="mt-5 w-full bg-yz-ink px-4 py-2.5 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
+            className="mt-5 w-full rounded-sm bg-yz-ink px-4 py-2.5 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
           >
             Try again
           </button>
@@ -92,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => setDrawerOpen(true)}
               aria-label="Open menu"
               aria-expanded={drawerOpen}
-              className="flex h-8 w-8 items-center justify-center text-yz-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-sm text-yz-ink"
             >
               <svg
                 viewBox="0 0 20 20"
@@ -101,9 +101,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 aria-hidden="true"
               >
                 <path
-                  d="M3 5h14M3 10h14M3 15h14"
+                  d="M3 5.5h14M3 10h14M3 14.5h14"
                   stroke="currentColor"
-                  strokeWidth="1.6"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
                 />
               </svg>
             </button>

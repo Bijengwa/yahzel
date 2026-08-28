@@ -1,6 +1,5 @@
 "use client";
 
-import { StatusPill } from "@/components/ui/status-pill";
 import { formatJoinedDate } from "@/lib/format";
 import { CompletionChecklist, CompletionMeter } from "./completion-meter";
 import { ContactInformation } from "./contact-information";
@@ -16,68 +15,47 @@ export function ProfileScreen() {
   }
 
   return (
-    <div className="space-y-4">
-      <header className="border border-yz-neutral-300 bg-yz-panel p-5 sm:p-6">
-        <p className="text-[11px] font-bold tracking-[0.14em] text-yz-accent uppercase">
-          Personal profile
-        </p>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-brand text-[19px] font-extrabold tracking-tight text-yz-ink">
+            Personal profile
+          </h1>
 
-        <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <ProfilePicture profile={profile} />
-
-            <h1 className="font-brand mt-4 text-[22px] leading-tight font-extrabold tracking-tight text-yz-ink sm:text-[24px]">
-              {profile.fullName}
-            </h1>
-
-            <p className="mt-1 font-mono text-[13px] text-yz-neutral-600">
-              @{profile.username}
-            </p>
-
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="text-[13px] break-all text-yz-neutral-700">
-                {profile.email}
-              </span>
-
-              {profile.emailVerified ? (
-                <StatusPill tone="ok">Verified</StatusPill>
-              ) : (
-                <StatusPill tone="warn">Not verified</StatusPill>
-              )}
-            </div>
-
-            <p className="mt-3 text-[12px] text-yz-neutral-500">
-              With Yahzel since {formatJoinedDate(profile.createdAt)}
-            </p>
-          </div>
-
-          <div className="w-full border border-yz-neutral-300 bg-yz-neutral-100 p-4 lg:w-[260px] lg:shrink-0">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-[11px] font-bold tracking-[0.12em] text-yz-neutral-600 uppercase">
-                Profile complete
-              </h2>
-
-              <span className="font-mono text-[15px] font-medium text-yz-ink tabular-nums">
-                {profile.completion.percent}%
-              </span>
-            </div>
-
-            <CompletionMeter completion={profile.completion} className="mt-3" />
-
-            {profile.completion.isComplete ? (
-              <p className="mt-3 text-[13px] leading-6 text-yz-neutral-600">
-                Everything Yahzel needs is on file.
-              </p>
-            ) : (
-              <CompletionChecklist completion={profile.completion} />
-            )}
-          </div>
+          <p className="mt-0.5 text-[12.5px] text-yz-neutral-600">
+            Member since {formatJoinedDate(profile.createdAt)}
+          </p>
         </div>
-      </header>
 
-      <PersonalInformation profile={profile} />
+        {!profile.completion.isComplete && (
+          <div className="flex items-center gap-2">
+            <CompletionMeter
+              completion={profile.completion}
+              className="w-24"
+            />
 
-      <ContactInformation profile={profile} />
+            <span className="font-mono text-[12px] text-yz-neutral-600 tabular-nums">
+              {profile.completion.percent}%
+            </span>
+          </div>
+        )}
+      </div>
+
+      {!profile.completion.isComplete && (
+        <div className="rounded-md border border-yz-neutral-200 bg-yz-neutral-100 px-4 py-3">
+          <CompletionChecklist completion={profile.completion} />
+        </div>
+      )}
+
+      <div className="rounded-md border border-yz-neutral-200 bg-yz-panel px-5">
+        <div className="border-b border-yz-neutral-200 py-4">
+          <ProfilePicture profile={profile} />
+        </div>
+
+        <PersonalInformation profile={profile} />
+
+        <ContactInformation profile={profile} />
+      </div>
     </div>
   );
 }

@@ -55,7 +55,7 @@ export function CompletionBanner() {
   return (
     <Link
       href={`/profile#${section}`}
-      className="group block border border-yz-warn-line bg-yz-warn-bg px-4 py-3.5 transition-colors duration-150 hover:border-yz-warn-ink sm:px-5"
+      className="group block rounded-md border border-yz-warn-line bg-yz-warn-bg px-4 py-3 transition-colors duration-150 hover:border-yz-warn-ink"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <div className="min-w-0">

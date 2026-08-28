@@ -10,27 +10,28 @@
   --background: #ffffff;
   --foreground: #171717;
 
-  /* Core roles — a warm, comfortable light surface rather than clinical
-     pure white/grey. */
-  --yz-bg: #f5f2ee;
-  --yz-surface: #eae6e1;
-  --yz-panel: #fdfbf9;
-  --yz-ink: #201e1d;
-  --yz-ink-contrast: #ffffff;
+  /* Core roles — muted, warm surfaces rather than a bright white page.
+     Panel sits a shade lighter than the page ground so cards read as a
+     gentle lift, not a stark white rectangle. */
+  --yz-bg: #ede7de;
+  --yz-surface: #e3dcd0;
+  --yz-panel: #f4efe7;
+  --yz-ink: #2b2622;
+  --yz-ink-contrast: #faf6f0;
   --yz-accent: #ec3013;
   --yz-accent-2: #e15b47;
-  --yz-divider: color-mix(in srgb, #201e1d 40%, transparent);
+  --yz-divider: color-mix(in srgb, #2b2622 22%, transparent);
 
-  /* Neutral ramp */
-  --yz-neutral-100: #f8f4f4;
-  --yz-neutral-200: #eae7e7;
-  --yz-neutral-300: #d7d3d3;
-  --yz-neutral-400: #bab6b6;
-  --yz-neutral-500: #9b9797;
-  --yz-neutral-600: #7d7979;
-  --yz-neutral-700: #605d5d;
-  --yz-neutral-800: #444141;
-  --yz-neutral-900: #2d2b2b;
+  /* Neutral ramp — warm tan/charcoal instead of generic cool grey. */
+  --yz-neutral-100: #efe9df;
+  --yz-neutral-200: #e2dbcd;
+  --yz-neutral-300: #cfc4b0;
+  --yz-neutral-400: #b0a28b;
+  --yz-neutral-500: #8f8069;
+  --yz-neutral-600: #6f6252;
+  --yz-neutral-700: #564c40;
+  --yz-neutral-800: #3d362d;
+  --yz-neutral-900: #2b2622;
 
   /* Accent ramp */
   --yz-accent-100: #fff2ef;

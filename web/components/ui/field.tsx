@@ -3,7 +3,7 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
 const CONTROL =
-  "w-full border bg-yz-panel px-3 py-2.5 text-[14px] text-yz-ink outline-none transition-colors duration-150 disabled:bg-yz-neutral-100 disabled:text-yz-neutral-600";
+  "w-full rounded-sm border bg-yz-panel px-3 py-2.5 text-[14px] text-yz-ink outline-none transition-colors duration-150 disabled:bg-yz-neutral-100 disabled:text-yz-neutral-600";
 
 function borderFor(error?: string): string {
   return error
@@ -21,7 +21,7 @@ export function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1.5 block text-[11px] font-bold tracking-[0.12em] text-yz-neutral-600 uppercase"
+      className="mb-1.5 block text-[12px] font-semibold text-yz-neutral-600"
     >
       {children}
     </label>

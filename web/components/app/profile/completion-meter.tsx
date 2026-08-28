@@ -19,7 +19,7 @@ export function CompletionMeter({
         <span
           key={item.key}
           title={item.label}
-          className={`h-2 flex-1 border transition-colors duration-300 ${
+          className={`h-1.5 flex-1 rounded-full border transition-colors duration-300 ${
             item.complete
               ? "border-yz-ink bg-yz-ink"
               : "border-yz-neutral-400 bg-transparent"
@@ -63,16 +63,18 @@ export function CompletionSummary({
 /** The same ledger, itemised — used on Profile where the reader can act. */
 export function CompletionChecklist({
   completion,
+  className = "",
 }: {
   completion: ProfileCompletion;
+  className?: string;
 }) {
   return (
-    <ul className="mt-4 space-y-2">
+    <ul className={`space-y-1.5 ${className}`}>
       {completion.items.map((item) => (
         <li key={item.key} className="flex items-center gap-2.5 text-[13px]">
           <span
             aria-hidden="true"
-            className={`flex h-4 w-4 shrink-0 items-center justify-center border text-[10px] font-bold ${
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border text-[10px] font-bold ${
               item.complete
                 ? "border-yz-ink bg-yz-ink text-yz-ink-contrast"
                 : "border-yz-neutral-400 text-transparent"

@@ -68,7 +68,7 @@ export function ProfilePicture({ profile }: { profile: Profile }) {
       <Avatar
         fullName={profile.fullName}
         src={profile.profilePictureUrl}
-        size={84}
+        size={56}
       />
 
       <div>

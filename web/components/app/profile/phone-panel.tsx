@@ -182,12 +182,12 @@ export function PhonePanel({ profile }: { profile: Profile }) {
       )}
 
       {editing && (
-        <div className="mt-4 border border-yz-neutral-300 bg-yz-neutral-100 p-4">
+        <div className="mt-4 rounded-md border border-yz-neutral-300 bg-yz-neutral-100 p-4">
           <FieldLabel htmlFor="phoneNational">Phone number</FieldLabel>
 
           <div className="flex">
             {dialCode ? (
-              <span className="flex items-center border border-r-0 border-yz-neutral-300 bg-yz-panel px-3 font-mono text-[14px] text-yz-neutral-700">
+              <span className="flex items-center rounded-l-sm border border-r-0 border-yz-neutral-300 bg-yz-panel px-3 font-mono text-[14px] text-yz-neutral-700">
                 {dialCode}
               </span>
             ) : (
@@ -195,7 +195,7 @@ export function PhonePanel({ profile }: { profile: Profile }) {
                 aria-label="Country code"
                 value={fallbackDial}
                 onChange={(event) => setFallbackDial(event.target.value)}
-                className="border border-r-0 border-yz-neutral-300 bg-yz-panel px-2 font-mono text-[14px] text-yz-neutral-700 outline-none"
+                className="rounded-l-sm border border-r-0 border-yz-neutral-300 bg-yz-panel px-2 font-mono text-[14px] text-yz-neutral-700 outline-none"
               >
                 <option value="">Code</option>
                 {countries.map((country) => (
@@ -216,7 +216,7 @@ export function PhonePanel({ profile }: { profile: Profile }) {
                 setNational(event.target.value.replace(/[^\d\s]/g, ""));
                 setError("");
               }}
-              className="w-full border border-yz-neutral-300 bg-yz-panel px-3 py-2.5 text-[14px] text-yz-ink outline-none transition-colors duration-150 focus:border-yz-ink"
+              className="w-full rounded-r-sm border border-yz-neutral-300 bg-yz-panel px-3 py-2.5 text-[14px] text-yz-ink outline-none transition-colors duration-150 focus:border-yz-ink"
             />
           </div>
 
@@ -263,7 +263,7 @@ export function PhonePanel({ profile }: { profile: Profile }) {
       )}
 
       {verifying && !editing && (
-        <div className="mt-4 border border-yz-neutral-300 bg-yz-neutral-100 p-4">
+        <div className="mt-4 rounded-md border border-yz-neutral-300 bg-yz-neutral-100 p-4">
           <p className="text-[13px] leading-6 text-yz-neutral-700">
             Enter the 6-digit code sent to{" "}
             {formatPhoneNumber(profile.phoneNumber, countries)}.

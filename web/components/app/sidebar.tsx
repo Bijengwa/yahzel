@@ -62,21 +62,43 @@ export function Sidebar({
           type="button"
           onClick={() => setCollapsed((current) => !current)}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="flex h-7 w-7 shrink-0 items-center justify-center text-yz-ink transition-colors hover:bg-yz-neutral-100"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="group relative flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-yz-ink transition-colors hover:bg-yz-neutral-100"
         >
           {collapsed ? (
-            <YahzelIcon
-              size={17}
-              className="text-yz-ink"
-              title={null}
-              maskId={`yz-sidebar-mark-collapsed-${uid}`}
-            />
+            <>
+              {/* Default: the mark. On hover, it fades out for a hamburger
+                  underneath — signalling "click to open the sidebar"
+                  without ever permanently losing the brand mark. */}
+              <YahzelIcon
+                size={17}
+                className="text-yz-ink transition-opacity duration-150 group-hover:opacity-0 group-focus-visible:opacity-0"
+                title={null}
+                maskId={`yz-sidebar-mark-collapsed-${uid}`}
+              />
+
+              <svg
+                viewBox="0 0 20 20"
+                width="16"
+                height="16"
+                aria-hidden="true"
+                className="absolute opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+              >
+                <path
+                  d="M3 5.5h14M3 10h14M3 14.5h14"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </>
           ) : (
             <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
               <path
-                d="M3 5h14M3 10h14M3 15h14"
+                d="M3 5.5h14M3 10h14M3 14.5h14"
                 stroke="currentColor"
-                strokeWidth="1.6"
+                strokeWidth="1.5"
+                strokeLinecap="round"
               />
             </svg>
           )}

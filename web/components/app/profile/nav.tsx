@@ -8,9 +8,9 @@ function Icon(props: SVGProps<SVGSVGElement>) {
       height="19"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="square"
-      strokeLinejoin="miter"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
       {...props}
     />
@@ -65,13 +65,21 @@ export const NAV_ITEMS = [
   },
 ] as const;
 
+/**
+ * A proper gear/cog — deliberately distinct from the sun glyph used for the
+ * light-theme option, so Settings and Appearance never look like the same
+ * icon.
+ */
 export const SETTINGS_ITEM = {
   href: "/settings",
   label: "Settings",
   icon: (
     <Icon>
-      <path d="M10 7.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z" />
-      <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4" />
+      <circle cx="10" cy="10" r="2.5" />
+      <path
+        d="M10 3.2v1.9M10 14.9v1.9M16.8 10h-1.9M5.1 10H3.2M15.1 4.9l-1.35 1.35M6.25 13.75L4.9 15.1M15.1 15.1l-1.35-1.35M6.25 6.25L4.9 4.9"
+        strokeWidth="2.1"
+      />
     </Icon>
   ),
 };
