@@ -6,7 +6,6 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { formatJoinedDate } from "@/lib/format";
 import { Avatar } from "./avatar";
 import { CompletionChecklist, CompletionMeter } from "./completion-meter";
-import { FUTURE_AREAS } from "./nav";
 import { useProfile } from "./profile-provider";
 
 const ENTRY_POINTS = [
@@ -82,7 +81,10 @@ export function DashboardScreen() {
             </span>
           </div>
 
-          <CompletionMeter completion={profile.completion} className="mt-3" />
+          <CompletionMeter
+            completion={profile.completion}
+            className="mt-3"
+          />
 
           {profile.completion.isComplete ? (
             <p className="mt-3 text-[13px] text-yz-neutral-600">
@@ -130,31 +132,6 @@ export function DashboardScreen() {
             </span>
           </Link>
         ))}
-      </section>
-
-      <section className="border border-yz-neutral-300 bg-white p-6 sm:p-8">
-        <h2 className="text-[11px] font-bold tracking-[0.14em] text-yz-neutral-600 uppercase">
-          The rest of Yahzel
-        </h2>
-
-        <p className="mt-2 max-w-xl text-[13px] leading-6 text-yz-neutral-600">
-          Your personal profile is the identity these will be built on. None of
-          them are available yet.
-        </p>
-
-        <ul className="mt-5 divide-y divide-yz-neutral-200 border-t border-yz-neutral-200">
-          {FUTURE_AREAS.map((area) => (
-            <li
-              key={area}
-              className="flex items-center justify-between py-3 text-[14px] text-yz-neutral-400"
-            >
-              {area}
-              <span className="text-[11px] font-bold tracking-[0.1em] uppercase">
-                Not yet available
-              </span>
-            </li>
-          ))}
-        </ul>
       </section>
     </div>
   );
