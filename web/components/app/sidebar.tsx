@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 
+import { YahzelIcon } from "@/components/yahzel-icon";
 import { NAV_ITEMS, SETTINGS_ITEM } from "./profile/nav";
 import { useProfile } from "./profile/profile-provider";
 import { Avatar } from "./profile/avatar";
+
+const NAV_LINK =
+  "flex h-9 items-center rounded-sm text-[13px] font-semibold transition-colors duration-150";
 
 export function Sidebar({
   onNavigate,
@@ -18,46 +22,70 @@ export function Sidebar({
 
   const [collapsed, setCollapsed] = useState(false);
 
+  // The desktop rail stays mounted (just display:none) even when the mobile
+  // drawer's own Sidebar instance is open, so the knockout mask id must be
+  // unique per instance — a collision paints the mark as a solid block.
+  const uid = useId();
+
   function handleNavigate() {
     onNavigate?.();
   }
 
   return (
     <div
-      className={`flex h-full flex-col bg-yz-panel transition-[width] duration-200 ${
-        collapsed ? "w-[72px]" : "w-[236px]"
+      className={`flex h-full flex-col border-r border-yz-neutral-200 bg-yz-panel transition-[width] duration-200 ${
+        collapsed ? "w-14" : "w-[200px]"
       }`}
     >
-      {/* Collapse control — brand now lives in the top workspace bar, so
-          this rail is pure navigation chrome. */}
-      <div className="flex h-12 shrink-0 items-center justify-end border-b border-yz-neutral-200 px-2">
+      {/* Brand + collapse control */}
+      <div
+        className={`flex h-11 shrink-0 items-center border-b border-yz-neutral-200 ${
+          collapsed ? "justify-center px-0" : "justify-between px-2.5"
+        }`}
+      >
+        {!collapsed && (
+          <span className="flex min-w-0 items-center gap-2">
+            <YahzelIcon
+              size={19}
+              className="shrink-0 text-yz-ink"
+              title={null}
+              maskId={`yz-sidebar-mark-${uid}`}
+            />
+
+            <span className="font-brand truncate text-[14px] font-extrabold tracking-tight text-yz-ink">
+              Yahzel
+            </span>
+          </span>
+        )}
+
         <button
           type="button"
           onClick={() => setCollapsed((current) => !current)}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="flex h-9 w-9 items-center justify-center text-yz-ink transition-colors hover:bg-yz-neutral-100"
+          className="flex h-7 w-7 shrink-0 items-center justify-center text-yz-ink transition-colors hover:bg-yz-neutral-100"
         >
-          <svg
-            viewBox="0 0 20 20"
-            width="18"
-            height="18"
-            aria-hidden="true"
-          >
-            <path
-              d="M3 5h14M3 10h14M3 15h14"
-              stroke="currentColor"
-              strokeWidth="1.6"
+          {collapsed ? (
+            <YahzelIcon
+              size={17}
+              className="text-yz-ink"
+              title={null}
+              maskId={`yz-sidebar-mark-collapsed-${uid}`}
             />
-          </svg>
+          ) : (
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+              <path
+                d="M3 5h14M3 10h14M3 15h14"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+            </svg>
+          )}
         </button>
       </div>
 
       {/* Main navigation */}
-      <nav
-        className="flex-1 overflow-y-auto px-2.5 py-4"
-        aria-label="Main"
-      >
-        <ul className="space-y-1">
+      <nav className="flex-1 overflow-y-auto px-2 py-2" aria-label="Main">
+        <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
             const active =
               pathname === item.href ||
@@ -71,31 +99,17 @@ export function Sidebar({
                   onClick={handleNavigate}
                   aria-current={active ? "page" : undefined}
                   title={collapsed ? item.label : undefined}
-                  className={`group flex h-10 items-center rounded-sm border-l-2 transition-colors duration-150 ${
-                    collapsed
-                      ? "justify-center px-0"
-                      : "gap-3 px-3"
+                  className={`${NAV_LINK} ${
+                    collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
                   } ${
                     active
-                      ? "border-yz-accent bg-yz-neutral-100 text-yz-ink"
-                      : "border-transparent text-yz-neutral-700 hover:bg-yz-neutral-100 hover:text-yz-ink"
+                      ? "text-yz-accent"
+                      : "text-yz-neutral-700 hover:bg-yz-neutral-100 hover:text-yz-ink"
                   }`}
                 >
-                  <span
-                    className={`shrink-0 ${
-                      active
-                        ? "text-yz-ink"
-                        : "text-yz-accent"
-                    }`}
-                  >
-                    {item.icon}
-                  </span>
+                  <span className="shrink-0">{item.icon}</span>
 
-                  {!collapsed && (
-                    <span className="text-[13px] font-semibold">
-                      {item.label}
-                    </span>
-                  )}
+                  {!collapsed && <span>{item.label}</span>}
                 </Link>
               </li>
             );
@@ -103,8 +117,8 @@ export function Sidebar({
         </ul>
       </nav>
 
-      {/* Bottom navigation */}
-      <div className="shrink-0 border-t border-yz-neutral-200 px-2.5 py-3">
+      {/* Settings + profile, pinned to the bottom */}
+      <div className="shrink-0 border-t border-yz-neutral-200 px-2 py-2">
         <Link
           href={SETTINGS_ITEM.href}
           onClick={handleNavigate}
@@ -112,51 +126,34 @@ export function Sidebar({
           aria-current={
             pathname === SETTINGS_ITEM.href ? "page" : undefined
           }
-          className={`mb-1 flex h-10 items-center rounded-sm border-l-2 transition-colors duration-150 ${
-            collapsed
-              ? "justify-center px-0"
-              : "gap-3 px-3"
+          className={`${NAV_LINK} ${
+            collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
           } ${
             pathname === SETTINGS_ITEM.href
-              ? "border-yz-accent bg-yz-neutral-100 text-yz-ink"
-              : "border-transparent text-yz-neutral-700 hover:bg-yz-neutral-100 hover:text-yz-ink"
+              ? "text-yz-accent"
+              : "text-yz-neutral-700 hover:bg-yz-neutral-100 hover:text-yz-ink"
           }`}
         >
-          <span
-            className={
-              pathname === SETTINGS_ITEM.href
-                ? "text-yz-ink"
-                : "text-yz-accent"
-            }
-          >
-            {SETTINGS_ITEM.icon}
-          </span>
+          <span className="shrink-0">{SETTINGS_ITEM.icon}</span>
 
-          {!collapsed && (
-            <span className="text-[13px] font-semibold">
-              Settings
-            </span>
-          )}
+          {!collapsed && <span>Settings</span>}
         </Link>
 
-        {/* Profile picture = profile button */}
+        {/* The profile picture is the profile button — no extra chrome. */}
         {profile && (
           <Link
             href="/profile"
             onClick={handleNavigate}
             title={collapsed ? profile.fullName : undefined}
             aria-label={`Open profile for ${profile.fullName}`}
-            className={`flex h-11 items-center rounded-sm transition-colors hover:bg-yz-neutral-100 ${
-              collapsed
-                ? "justify-center px-0"
-                : "gap-3 px-3"
+            className={`mt-1 flex items-center rounded-sm py-1.5 transition-colors hover:bg-yz-neutral-100 ${
+              collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
             }`}
           >
             <Avatar
               fullName={profile.fullName}
               src={profile.profilePictureUrl}
-              size={36}
-              className="rounded-full"
+              size={28}
             />
 
             {!collapsed && (

@@ -76,74 +76,72 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-yz-bg">
-      {/* Thin top workspace bar — the one persistent piece of chrome shared
-          by every breakpoint. Brand lives here, not in the sidebar, so the
-          sidebar can stay a pure nav rail. */}
-      <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-yz-neutral-200 bg-yz-panel px-3 lg:px-4">
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open menu"
-            aria-expanded={drawerOpen}
-            className="flex h-9 w-9 items-center justify-center text-yz-ink lg:hidden"
-          >
-            <svg
-              viewBox="0 0 20 20"
-              width="19"
-              height="19"
-              aria-hidden="true"
+    <div className="flex min-h-screen bg-yz-bg">
+      {/* Sidebar owns the full viewport height and its own brand header —
+          the content pane's thin bar sits beside it, not above it, so the
+          two read as one connected frame rather than stacked headers. */}
+      <aside className="sticky top-0 hidden h-screen shrink-0 lg:block">
+        <Sidebar />
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-11 shrink-0 items-center border-b border-yz-neutral-200 bg-yz-panel px-3 lg:px-4">
+          <div className="flex items-center gap-2 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open menu"
+              aria-expanded={drawerOpen}
+              className="flex h-8 w-8 items-center justify-center text-yz-ink"
             >
-              <path
-                d="M3 5h14M3 10h14M3 15h14"
-                stroke="currentColor"
-                strokeWidth="1.6"
+              <svg
+                viewBox="0 0 20 20"
+                width="18"
+                height="18"
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 5h14M3 10h14M3 15h14"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                />
+              </svg>
+            </button>
+
+            <span className="flex items-center gap-1.5">
+              <YahzelIcon
+                size={18}
+                className="text-yz-ink"
+                title={null}
+                maskId="yz-topbar-mark"
               />
-            </svg>
-          </button>
 
-          <span className="flex items-center gap-2">
-            <YahzelIcon
-              size={20}
-              className="text-yz-ink"
-              title={null}
-              maskId="yz-topbar-mark"
-            />
-
-            <span className="font-brand text-[14px] font-extrabold tracking-tight text-yz-ink">
-              Yahzel
+              <span className="font-brand text-[13px] font-extrabold tracking-tight text-yz-ink">
+                Yahzel
+              </span>
             </span>
-          </span>
-        </div>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <ThemeToggleButton />
+          <div className="ml-auto flex items-center gap-2">
+            <ThemeToggleButton />
 
-          <span className="lg:hidden">
-            <Avatar
-              fullName={profile.fullName}
-              src={profile.profilePictureUrl}
-              size={28}
-            />
-          </span>
-        </div>
-      </header>
+            <span className="lg:hidden">
+              <Avatar
+                fullName={profile.fullName}
+                src={profile.profilePictureUrl}
+                size={26}
+              />
+            </span>
+          </div>
+        </header>
 
-      <div className="flex">
-        <aside className="sticky top-12 hidden h-[calc(100vh-3rem)] shrink-0 lg:block">
-          <Sidebar />
-        </aside>
+        <main className="flex-1 px-4 py-3 sm:px-5 sm:py-4">
+          <CompletionBanner />
 
-        <div className="min-w-0 flex-1">
-          <main className="w-full px-4 py-4 sm:px-5 sm:py-5 xl:px-6 xl:py-6">
-            <CompletionBanner />
-
-            <div className="mt-4">
-              {children}
-            </div>
-          </main>
-        </div>
+          <div className="mt-3">
+            {children}
+          </div>
+        </main>
       </div>
 
       {drawerOpen && (
@@ -155,7 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="absolute inset-0 h-full w-full bg-black/40"
           />
 
-          <div className="absolute top-12 bottom-0 left-0 w-[236px] max-w-[85vw] border-r border-yz-neutral-200 bg-yz-panel shadow-[0_0_60px_-10px_rgba(0,0,0,0.45)]">
+          <div className="absolute inset-y-0 left-0 w-[220px] max-w-[85vw] shadow-[0_0_60px_-10px_rgba(0,0,0,0.45)]">
             <Sidebar
               onNavigate={() => setDrawerOpen(false)}
             />

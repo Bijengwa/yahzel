@@ -71,22 +71,22 @@ export function Modal({
         aria-modal="true"
         aria-labelledby="yz-modal-title"
         tabIndex={-1}
-        className="w-full max-w-md border border-yz-neutral-300 bg-yz-panel p-6 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.45)] outline-none sm:p-7"
+        className="w-full max-w-sm border border-yz-neutral-300 bg-yz-panel p-5 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.45)] outline-none"
       >
         <h2
           id="yz-modal-title"
-          className="font-brand text-[20px] leading-tight font-extrabold tracking-tight text-yz-ink"
+          className="font-brand text-[17px] leading-tight font-extrabold tracking-tight text-yz-ink"
         >
           {title}
         </h2>
 
         {description && (
-          <div className="mt-2 text-[14px] leading-6 text-yz-neutral-700">
+          <div className="mt-2 text-[13px] leading-6 text-yz-neutral-700">
             {description}
           </div>
         )}
 
-        <div className="mt-6">{children}</div>
+        <div className="mt-5">{children}</div>
       </div>
     </div>
   );

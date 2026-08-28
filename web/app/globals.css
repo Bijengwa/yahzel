@@ -10,10 +10,11 @@
   --background: #ffffff;
   --foreground: #171717;
 
-  /* Core roles */
-  --yz-bg: #f3f2f2;
-  --yz-surface: #eae9e9;
-  --yz-panel: #ffffff;
+  /* Core roles — a warm, comfortable light surface rather than clinical
+     pure white/grey. */
+  --yz-bg: #f5f2ee;
+  --yz-surface: #eae6e1;
+  --yz-panel: #fdfbf9;
   --yz-ink: #201e1d;
   --yz-ink-contrast: #ffffff;
   --yz-accent: #ec3013;

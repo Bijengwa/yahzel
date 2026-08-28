@@ -50,7 +50,7 @@ function AppearanceSection() {
       <div
         role="radiogroup"
         aria-label="Theme"
-        className="grid max-w-sm grid-cols-2 gap-3"
+        className="flex max-w-xs gap-2"
       >
         {THEME_OPTIONS.map((option) => {
           const active = theme === option.value;
@@ -63,7 +63,7 @@ function AppearanceSection() {
               role="radio"
               aria-checked={active}
               onClick={() => setTheme(option.value)}
-              className={`flex flex-col items-start gap-2 border px-4 py-3.5 text-left transition-colors duration-150 ${
+              className={`flex flex-1 items-center gap-2 border px-3 py-2 text-left transition-colors duration-150 ${
                 active
                   ? "border-yz-ink bg-yz-neutral-100"
                   : "border-yz-neutral-300 hover:border-yz-ink"
@@ -75,10 +75,6 @@ function AppearanceSection() {
 
               <span className="text-[13px] font-bold text-yz-ink">
                 {option.label}
-              </span>
-
-              <span className="text-[12px] leading-5 text-yz-neutral-600">
-                {option.description}
               </span>
             </button>
           );
@@ -141,7 +137,7 @@ function PasswordSection() {
           void submit();
         }}
       >
-        <div className="grid max-w-xl gap-4">
+        <div className="grid max-w-sm gap-3">
           <TextField
             id="currentPassword"
             type="password"
@@ -173,12 +169,11 @@ function PasswordSection() {
               update("confirmPassword", event.target.value)
             }
           />
-        </div>
 
-        <div className="mt-5 border-t border-yz-neutral-200 pt-4">
           <Button
             type="submit"
             variant="primary"
+            className="mt-1 self-start"
             disabled={saving || !filled}
           >
             {saving ? "Changing…" : "Change password"}
@@ -208,7 +203,7 @@ export function SettingsScreen() {
   const [logoutOpen, setLogoutOpen] = useState(false);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <header>
         <p className="text-[11px] font-bold tracking-[0.14em] text-yz-accent uppercase">
           Settings

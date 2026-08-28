@@ -16,17 +16,17 @@ export function ProfileScreen() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="border border-yz-neutral-300 bg-yz-panel p-6 sm:p-8">
+    <div className="space-y-4">
+      <header className="border border-yz-neutral-300 bg-yz-panel p-5 sm:p-6">
         <p className="text-[11px] font-bold tracking-[0.14em] text-yz-accent uppercase">
           Personal profile
         </p>
 
-        <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <ProfilePicture profile={profile} />
 
-            <h1 className="font-brand mt-5 text-[26px] leading-tight font-extrabold tracking-tight text-yz-ink sm:text-[30px]">
+            <h1 className="font-brand mt-4 text-[22px] leading-tight font-extrabold tracking-tight text-yz-ink sm:text-[24px]">
               {profile.fullName}
             </h1>
 
@@ -51,7 +51,7 @@ export function ProfileScreen() {
             </p>
           </div>
 
-          <div className="w-full border border-yz-neutral-300 bg-yz-neutral-100 p-5 lg:w-[280px] lg:shrink-0">
+          <div className="w-full border border-yz-neutral-300 bg-yz-neutral-100 p-4 lg:w-[260px] lg:shrink-0">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-[11px] font-bold tracking-[0.12em] text-yz-neutral-600 uppercase">
                 Profile complete

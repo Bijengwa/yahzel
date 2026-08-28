@@ -19,7 +19,7 @@ export function Avatar({ fullName, src, size = 40, className = "" }: AvatarProps
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden bg-yz-ink text-yz-ink-contrast select-none ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-yz-ink text-yz-ink-contrast select-none ${className}`}
       style={{ width: size, height: size }}
     >
       {url ? (

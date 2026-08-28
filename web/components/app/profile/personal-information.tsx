@@ -113,7 +113,7 @@ export function PersonalInformation({ profile }: { profile: Profile }) {
       onSave={() => void save()}
     >
       {editing ? (
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             id="fullName"
             label="Full name"
