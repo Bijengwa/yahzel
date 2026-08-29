@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
+import {
+  PageHeader,
+  Panel,
+  PanelGroup,
+  PanelRow,
+  StatusMessage,
+} from "@/components/ui/panel";
 import { ApiError } from "@/lib/api";
 import { changePassword } from "@/lib/profile";
 import {
@@ -22,60 +29,6 @@ const EMPTY = {
   newPassword: "",
   confirmPassword: "",
 };
-
-/**
- * One labelled group in the settings list — the unit new sections get added
- * as. Keeping this generic (a heading plus whatever rows it holds) means
- * future settings slot in without redesigning the page around them.
- */
-function SettingsGroup({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="border-b border-yz-neutral-200 py-4 last:border-b-0">
-      <h2 className="text-[12px] font-bold text-yz-neutral-600">{title}</h2>
-
-      <div className="mt-2.5">{children}</div>
-    </div>
-  );
-}
-
-/** A single compact row: a label/description on the left, a control on the right. */
-function SettingsRow({
-  label,
-  description,
-  trailing,
-  children,
-}: {
-  label: string;
-  description?: string;
-  trailing?: ReactNode;
-  children?: ReactNode;
-}) {
-  return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-yz-ink">{label}</p>
-
-          {description && (
-            <p className="mt-0.5 text-[12px] leading-5 text-yz-neutral-600">
-              {description}
-            </p>
-          )}
-        </div>
-
-        {trailing && <div className="shrink-0">{trailing}</div>}
-      </div>
-
-      {children}
-    </div>
-  );
-}
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: typeof SunIcon }[] =
   [
@@ -166,7 +119,7 @@ function PasswordRow() {
   }
 
   return (
-    <SettingsRow
+    <PanelRow
       label="Change your password"
       description={
         open ? undefined : "Update the password you use to sign in."
@@ -188,16 +141,9 @@ function PasswordRow() {
           }}
         >
           {status && (
-            <p
-              role="status"
-              className={`mb-3 rounded-sm border px-3.5 py-2.5 text-[13px] ${
-                status.tone === "ok"
-                  ? "border-yz-ok-line bg-yz-ok-bg text-yz-ok-ink"
-                  : "border-yz-danger-line bg-yz-danger-bg text-yz-danger-ink"
-              }`}
-            >
+            <StatusMessage tone={status.tone} className="mb-3">
               {status.message}
-            </p>
+            </StatusMessage>
           )}
 
           <div className="grid max-w-sm gap-3">
@@ -245,7 +191,7 @@ function PasswordRow() {
           </div>
         </form>
       )}
-    </SettingsRow>
+    </PanelRow>
   );
 }
 
@@ -254,31 +200,26 @@ export function SettingsScreen() {
 
   return (
     <div className="space-y-3">
-      <header>
-        <h1 className="font-brand text-[19px] font-extrabold tracking-tight text-yz-ink">
-          Settings
-        </h1>
+      <PageHeader
+        title="Settings"
+        description="Appearance, sign-in credentials and session for this device."
+      />
 
-        <p className="mt-0.5 text-[12.5px] text-yz-neutral-600">
-          Appearance, sign-in credentials and session for this device.
-        </p>
-      </header>
-
-      <div className="rounded-md border border-yz-neutral-200 bg-yz-panel px-5">
-        <SettingsGroup title="Appearance">
-          <SettingsRow
+      <Panel>
+        <PanelGroup title="Appearance">
+          <PanelRow
             label="Theme"
             description="System follows your device's light/dark setting."
             trailing={<ThemeControl />}
           />
-        </SettingsGroup>
+        </PanelGroup>
 
-        <SettingsGroup title="Password">
+        <PanelGroup title="Password">
           <PasswordRow />
-        </SettingsGroup>
+        </PanelGroup>
 
-        <SettingsGroup title="Log out">
-          <SettingsRow
+        <PanelGroup title="Log out">
+          <PanelRow
             label="Sign out of Yahzel"
             description="You'll need to sign in again on this device."
             trailing={
@@ -291,8 +232,8 @@ export function SettingsScreen() {
               </Button>
             }
           />
-        </SettingsGroup>
-      </div>
+        </PanelGroup>
+      </Panel>
 
       <LogoutDialog open={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </div>

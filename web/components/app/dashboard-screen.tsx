@@ -16,6 +16,12 @@ const ENTRY_POINTS = [
       "Your name, username, contact details and picture — the identity everything else in Yahzel grows from.",
   },
   {
+    href: "/organisation",
+    title: "Organisation",
+    description:
+      "Register an organisation, see where you take part, and manage the people who belong to it.",
+  },
+  {
     href: "/settings",
     title: "Settings",
     description: "Change your password or sign out of Yahzel.",

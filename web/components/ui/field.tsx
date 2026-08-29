@@ -1,6 +1,11 @@
 "use client";
 
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type {
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from "react";
 
 const CONTROL =
   "w-full rounded-sm border bg-yz-panel px-3 py-2.5 text-[14px] text-yz-ink outline-none transition-colors duration-150 disabled:bg-yz-neutral-100 disabled:text-yz-neutral-600";
@@ -66,6 +71,38 @@ export function TextField({
         id={id}
         aria-invalid={error ? true : undefined}
         className={`${CONTROL} ${borderFor(error)} ${className}`}
+        {...props}
+      />
+
+      <Message error={error} hint={hint} />
+    </div>
+  );
+}
+
+type TextAreaFieldProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label: ReactNode;
+  error?: string;
+  hint?: ReactNode;
+};
+
+export function TextAreaField({
+  label,
+  error,
+  hint,
+  id,
+  rows = 3,
+  className = "",
+  ...props
+}: TextAreaFieldProps) {
+  return (
+    <div>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+
+      <textarea
+        id={id}
+        rows={rows}
+        aria-invalid={error ? true : undefined}
+        className={`${CONTROL} ${borderFor(error)} resize-y leading-6 ${className}`}
         {...props}
       />
 

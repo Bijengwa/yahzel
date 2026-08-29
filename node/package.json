@@ -10,6 +10,7 @@
     "db:migrate": "tsx node_modules/knex/bin/cli.js migrate:latest",
     "db:migrate:rollback": "tsx node_modules/knex/bin/cli.js migrate:rollback",
     "check:api": "tsx scripts/check-profile-api.ts",
+    "check:org": "tsx scripts/check-organisation-api.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
