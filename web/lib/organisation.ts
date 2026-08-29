@@ -52,6 +52,9 @@ export type Membership = {
 
   title: string | null;
 
+  /** The planned end date, known up front. Required for an internship. */
+  expectedEndAt: string | null;
+
   /** active | inactive | concluded */
   status: string;
   joinedAt: string | null;
@@ -87,6 +90,7 @@ export type Invitation = {
   participationType: string;
   participationLabel: string;
   title: string | null;
+  expectedEndAt: string | null;
 
   invitedBy: {
     id: number;
@@ -198,8 +202,9 @@ export type InviteInput = {
   title: string | null;
   systemRole: string;
   organisationClass: string;
-  designation: string;
   participationType: string;
+  /** Required when participationType is "intern". */
+  expectedEndAt: string | null;
 };
 
 export function invitePerson(
@@ -230,9 +235,9 @@ export function withdrawInvitation(
 export type StandingInput = {
   systemRole?: string;
   organisationClass?: string;
-  designation?: string;
   participationType?: string;
   title?: string | null;
+  expectedEndAt?: string | null;
   status?: string;
 };
 
@@ -283,30 +288,18 @@ export function declineInvitation(
  * organisation has not chosen its own.
  */
 export function describeStanding(membership: Membership): string {
-  if (membership.title) {
-    return membership.title;
-  }
-
-  return membership.isHead
-    ? "Head"
-    : membership.isAdministration
-      ? membership.designationLabel
-      : "Member";
+  return membership.title || membership.organisationClassLabel;
 }
 
 /**
- * "Accountant · Member" — the title the organisation chose, then where that
- * person sits in it. Head and the other Administration positions are named
- * rather than reduced to the class.
+ * "Accountant / Employee" — the title the organisation chose, then how the
+ * person takes part. Falls back to just the participation when there is no
+ * title.
  */
-export function describePlacement(membership: Membership): string {
-  const place = membership.isHead
-    ? "Head"
-    : membership.designation !== "member"
-      ? membership.designationLabel
-      : membership.organisationClassLabel;
-
-  return [describeStanding(membership), place].filter(Boolean).join(" · ");
+export function describeParticipationLine(membership: Membership): string {
+  return [membership.title, membership.participationLabel]
+    .filter(Boolean)
+    .join(" / ");
 }
 
 /**

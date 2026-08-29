@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { StatusPill } from "@/components/ui/status-pill";
 import {
-  describePlacement,
+  describeParticipationLine,
   describeTimeline,
   statusLabel,
   type Participation,
@@ -28,10 +28,9 @@ export function MembershipStatusPill({ status }: { status: string }) {
  * One organisation, closed.
  *
  *   Musabe Schools                          ACTIVE
- *   Accountant · Member
- *   Employment                     Sep 2026 — Present
+ *   Accountant / Employee            Sep 2026 — Present
  *
- * Three short lines and nothing else: the description, the member count and
+ * Two short lines and nothing else: the description, the member count and
  * everything else belong to the organisation once it is opened.
  */
 export function OrganisationCard({
@@ -42,6 +41,8 @@ export function OrganisationCard({
   href?: string;
 }) {
   const { organisation, membership } = entry;
+  const concluded = membership.status === "concluded";
+  const active = membership.status === "active";
 
   const body = (
     <>
@@ -53,14 +54,19 @@ export function OrganisationCard({
         <MembershipStatusPill status={membership.status} />
       </div>
 
-      <div className="mt-0.5 truncate text-[12px] text-yz-neutral-700">
-        {describePlacement(membership)}
-      </div>
-
       <div className="mt-0.5 flex items-baseline justify-between gap-3 text-[12px] text-yz-neutral-600">
-        <span className="truncate">{membership.participationLabel}</span>
+        <span className="truncate">{describeParticipationLine(membership)}</span>
 
-        <span className="shrink-0 tabular-nums">
+        <span
+          className={
+            "shrink-0 tabular-nums " +
+            (concluded
+              ? "text-yz-danger-ink"
+              : active
+                ? "text-yz-ok-ink"
+                : "text-yz-neutral-600")
+          }
+        >
           {describeTimeline(membership)}
         </span>
       </div>

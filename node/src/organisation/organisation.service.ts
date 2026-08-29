@@ -45,8 +45,10 @@ import {
 } from "./organisation.types.js";
 import {
   checkClassAndDesignation,
+  checkExpectedEndDate,
   validateDescription,
   validateDesignation,
+  validateExpectedEndDate,
   validateInvitee,
   validateMembershipStatus,
   validateOrganisationClass,
@@ -136,6 +138,7 @@ function publicMembership(record: OrganisationMemberRecord) {
     participationLabel: participationTypeLabel(record.participation_type),
 
     title: record.title,
+    expectedEndAt: record.expected_end_at,
 
     status: record.status,
     joinedAt: record.joined_at,
@@ -174,6 +177,7 @@ function publicInvitation(record: InvitationWithContext) {
     participationType: record.participation_type,
     participationLabel: participationTypeLabel(record.participation_type),
     title: record.title,
+    expectedEndAt: record.expected_end_at,
 
     invitedBy: {
       id: record.invited_by,
@@ -433,6 +437,7 @@ export type StandingInput = {
   designation?: unknown;
   participationType?: unknown;
   title?: unknown;
+  expectedEndAt?: unknown;
   status?: unknown;
 };
 
@@ -487,6 +492,11 @@ export async function updateStanding(
       ? { ok: true as const, value: target.title }
       : validateTitle(input.title);
 
+  const expectedEndAt =
+    input.expectedEndAt === undefined
+      ? { ok: true as const, value: target.expected_end_at }
+      : validateExpectedEndDate(input.expectedEndAt);
+
   const status =
     input.status === undefined
       ? { ok: true as const, value: target.status }
@@ -498,6 +508,7 @@ export async function updateStanding(
     designation,
     participationType,
     title,
+    expectedEndAt,
     status,
   ].flatMap((result) => (result.ok ? [] : result.errors));
 
@@ -507,6 +518,7 @@ export async function updateStanding(
     !designation.ok ||
     !participationType.ok ||
     !title.ok ||
+    !expectedEndAt.ok ||
     !status.ok
   ) {
     throw new OrganisationError(422, errors);
@@ -514,6 +526,7 @@ export async function updateStanding(
 
   errors.push(
     ...checkClassAndDesignation(organisationClass.value, designation.value),
+    ...checkExpectedEndDate(participationType.value, expectedEndAt.value),
   );
 
   if (errors.length > 0) {
@@ -572,6 +585,7 @@ export async function updateStanding(
     designation: designation.value,
     participation_type: participationType.value,
     title: title.value,
+    expected_end_at: expectedEndAt.value,
     status: status.value,
     ...timeline,
   });
@@ -659,6 +673,7 @@ export type InviteInput = {
   organisationClass?: unknown;
   designation?: unknown;
   participationType?: unknown;
+  expectedEndAt?: unknown;
 };
 
 function invitationExpiry(): string {
@@ -693,6 +708,7 @@ export async function inviteToOrganisation(
   const organisationClass = validateOrganisationClass(input.organisationClass);
   const designation = validateDesignation(input.designation);
   const participationType = validateParticipationType(input.participationType);
+  const expectedEndAt = validateExpectedEndDate(input.expectedEndAt);
 
   const errors: FieldError[] = [
     invitee,
@@ -701,6 +717,7 @@ export async function inviteToOrganisation(
     organisationClass,
     designation,
     participationType,
+    expectedEndAt,
   ].flatMap((result) => (result.ok ? [] : result.errors));
 
   if (
@@ -709,13 +726,15 @@ export async function inviteToOrganisation(
     !systemRole.ok ||
     !organisationClass.ok ||
     !designation.ok ||
-    !participationType.ok
+    !participationType.ok ||
+    !expectedEndAt.ok
   ) {
     throw new OrganisationError(422, errors);
   }
 
   errors.push(
     ...checkClassAndDesignation(organisationClass.value, designation.value),
+    ...checkExpectedEndDate(participationType.value, expectedEndAt.value),
   );
 
   if (designation.value === "head") {
@@ -796,6 +815,7 @@ export async function inviteToOrganisation(
       organisationClass: organisationClass.value,
       designation: designation.value,
       title: title.value,
+      expectedEndAt: expectedEndAt.value,
       expiresAt: invitationExpiry(),
     });
   } catch (error) {
@@ -944,6 +964,7 @@ export async function acceptInvitation(
         organisation_class: invitation.organisation_class,
         designation: invitation.designation,
         title: invitation.title,
+        expected_end_at: invitation.expected_end_at,
         status: "active",
         joined_at: new Date().toISOString(),
         left_at: null,
@@ -957,6 +978,7 @@ export async function acceptInvitation(
         organisationClass: invitation.organisation_class,
         designation: invitation.designation,
         title: invitation.title,
+        expectedEndAt: invitation.expected_end_at,
         invitedBy: invitation.invited_by,
       });
 

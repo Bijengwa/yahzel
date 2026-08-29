@@ -5,7 +5,6 @@ import type { Membership } from "@/lib/organisation";
  * The facts Yahzel itself asserts about a person, kept visually separate from
  * the title the organisation gave them:
  *
- *   Head           — the highest-ranking position, inside Administration.
  *   Administration — the organisation's leadership class.
  *   Admin          — what they may do inside Yahzel: an access role.
  *
@@ -16,9 +15,7 @@ import type { Membership } from "@/lib/organisation";
 export function StandingPills({ membership }: { membership: Membership }) {
   return (
     <span className="flex flex-wrap items-center gap-1.5">
-      {membership.isHead && <StatusPill tone="muted">Head</StatusPill>}
-
-      {membership.isAdministration && !membership.isHead && (
+      {membership.isAdministration && (
         <StatusPill tone="muted">Administration</StatusPill>
       )}
 

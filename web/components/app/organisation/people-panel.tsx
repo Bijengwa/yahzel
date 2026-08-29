@@ -30,8 +30,8 @@ const EMPTY_INVITE = {
   title: "",
   systemRole: "member",
   organisationClass: "member",
-  designation: "member",
   participationType: "employee",
+  expectedEndAt: "",
 };
 
 function failureMessage(caught: unknown): string {
@@ -106,8 +106,8 @@ export function PeoplePanel({
         title: invite.title || null,
         systemRole: invite.systemRole,
         organisationClass: invite.organisationClass,
-        designation: invite.designation,
         participationType: invite.participationType,
+        expectedEndAt: invite.expectedEndAt || null,
       });
 
       setInvite(EMPTY_INVITE);
@@ -200,10 +200,7 @@ export function PeoplePanel({
             </span>
 
             <span className="block truncate text-[12px] text-yz-neutral-600">
-              {describeStanding(member)}
-              {member.isHead ? " · Head" : ""}
-              {" · "}
-              {member.participationLabel}
+              {describeStanding(member)} · {member.participationLabel}
             </span>
           </span>
         </span>
@@ -292,9 +289,9 @@ export function PeoplePanel({
 
               <TextField
                 id="inviteTitle"
-                label="Their title"
+                label="Professional title"
                 placeholder="Accountant"
-                hint="Optional, and in the organisation's own words."
+                hint="Free text, in the organisation's own words."
                 value={invite.title}
                 error={errors.title}
                 onChange={(event) =>
@@ -306,7 +303,7 @@ export function PeoplePanel({
               />
             </div>
 
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <SelectField
                 id="inviteParticipation"
                 label="Participation"
@@ -335,34 +332,10 @@ export function PeoplePanel({
                   setInvite((current) => ({
                     ...current,
                     organisationClass: event.target.value,
-                    designation:
-                      event.target.value === "administration"
-                        ? current.designation
-                        : "member",
                   }))
                 }
               >
                 {vocabulary.organisationClasses.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </SelectField>
-
-              <SelectField
-                id="inviteDesignation"
-                label="Position"
-                disabled={invite.organisationClass !== "administration"}
-                value={invite.designation}
-                error={errors.designation}
-                onChange={(event) =>
-                  setInvite((current) => ({
-                    ...current,
-                    designation: event.target.value,
-                  }))
-                }
-              >
-                {vocabulary.designations.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -385,6 +358,23 @@ export function PeoplePanel({
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
               </SelectField>
+
+              {invite.participationType === "intern" && (
+                <TextField
+                  id="inviteEndDate"
+                  label="End date"
+                  type="date"
+                  hint="Required for an internship."
+                  value={invite.expectedEndAt}
+                  error={errors.expectedEndAt}
+                  onChange={(event) =>
+                    setInvite((current) => ({
+                      ...current,
+                      expectedEndAt: event.target.value,
+                    }))
+                  }
+                />
+              )}
             </div>
 
             <div className="mt-3 flex items-center gap-2">
@@ -417,7 +407,6 @@ export function PeoplePanel({
           <StandingForm
             member={editing}
             classes={vocabulary.organisationClasses}
-            designations={vocabulary.designations}
             participationTypes={vocabulary.participationTypes}
             saving={busyMember === editing.id}
             onCancel={() => setEditing(null)}
@@ -433,9 +422,7 @@ export function PeoplePanel({
           </ul>
         ) : (
           <p className="text-[12.5px] leading-6 text-yz-neutral-600">
-            Nobody is in the Administration yet. Administration is the
-            organisation&rsquo;s leadership — the Head, directors and managers.
-            It is not the same thing as Yahzel&rsquo;s Admin access.
+            Nobody is in the Administration yet.
           </p>
         )}
       </PanelGroup>
@@ -490,14 +477,13 @@ export function PeoplePanel({
 }
 
 /**
- * Where somebody is placed: their class, their position in it, their title,
- * how they take part, and whether the relationship is still running. Each is
- * its own field — none is a side effect of another.
+ * Where somebody stands: their class, their title, how they take part, and
+ * whether the relationship is still running. Each is its own field — none is
+ * a side effect of another.
  */
 function StandingForm({
   member,
   classes,
-  designations,
   participationTypes,
   saving,
   onCancel,
@@ -505,7 +491,6 @@ function StandingForm({
 }: {
   member: Member;
   classes: { value: string; label: string }[];
-  designations: { value: string; label: string }[];
   participationTypes: { value: string; label: string }[];
   saving: boolean;
   onCancel: () => void;
@@ -513,10 +498,10 @@ function StandingForm({
 }) {
   const [form, setForm] = useState({
     organisationClass: member.organisationClass,
-    designation: member.designation,
     participationType: member.participationType,
     systemRole: member.systemRole,
     title: member.title ?? "",
+    expectedEndAt: member.expectedEndAt ? member.expectedEndAt.slice(0, 10) : "",
     status: member.status,
   });
 
@@ -525,7 +510,11 @@ function StandingForm({
       className="mb-4 rounded-sm border border-yz-neutral-300 bg-yz-neutral-100 p-3.5"
       onSubmit={(event) => {
         event.preventDefault();
-        onSave({ ...form, title: form.title || null });
+        onSave({
+          ...form,
+          title: form.title || null,
+          expectedEndAt: form.expectedEndAt || null,
+        });
       }}
     >
       <p className="mb-3 text-[12px] font-bold text-yz-neutral-600">
@@ -541,34 +530,10 @@ function StandingForm({
             setForm((current) => ({
               ...current,
               organisationClass: event.target.value,
-              designation:
-                event.target.value === "administration"
-                  ? current.designation
-                  : "member",
             }))
           }
         >
           {classes.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </SelectField>
-
-        <SelectField
-          id="standingDesignation"
-          label="Position"
-          hint="Head, Director and Manager belong to Administration."
-          disabled={form.organisationClass !== "administration"}
-          value={form.designation}
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              designation: event.target.value,
-            }))
-          }
-        >
-          {designations.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -595,7 +560,7 @@ function StandingForm({
 
         <TextField
           id="standingTitle"
-          label="Title"
+          label="Professional title"
           placeholder="Operations Manager"
           value={form.title}
           onChange={(event) =>
@@ -630,6 +595,22 @@ function StandingForm({
           <option value="inactive">Inactive</option>
           <option value="concluded">Concluded</option>
         </SelectField>
+
+        {form.participationType === "intern" && (
+          <TextField
+            id="standingEndDate"
+            label="End date"
+            type="date"
+            hint="Required for an internship."
+            value={form.expectedEndAt}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                expectedEndAt: event.target.value,
+              }))
+            }
+          />
+        )}
       </div>
 
       <div className="mt-3 flex items-center gap-2">

@@ -51,6 +51,9 @@ export type OrganisationMemberRecord = {
   joined_at: string | null;
   left_at: string | null;
 
+  /** The planned end date, known up front. Required for an internship. */
+  expected_end_at: string | null;
+
   created_at: string;
   updated_at: string;
 };
@@ -70,6 +73,9 @@ export type OrganisationInvitationRecord = {
   organisation_class: string;
   designation: string;
   title: string | null;
+
+  /** The planned end date, known up front. Required for an internship. */
+  expected_end_at: string | null;
 
   /** pending | accepted | declined | cancelled | expired. */
   status: string;

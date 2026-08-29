@@ -112,6 +112,7 @@ export async function insertMembership(input: {
   organisationClass: string;
   designation: string;
   title: string | null;
+  expectedEndAt: string | null;
   invitedBy: number | null;
 }): Promise<OrganisationMemberRecord> {
   const [row] = await db<OrganisationMemberRecord>(MEMBERS)
@@ -124,6 +125,7 @@ export async function insertMembership(input: {
       organisation_class: input.organisationClass,
       designation: input.designation,
       title: input.title,
+      expected_end_at: input.expectedEndAt,
       status: "active",
       invited_by: input.invitedBy,
       joined_at: db.fn.now() as unknown as string,
@@ -263,6 +265,7 @@ export async function insertInvitation(input: {
   organisationClass: string;
   designation: string;
   title: string | null;
+  expectedEndAt: string | null;
   expiresAt: string;
 }): Promise<OrganisationInvitationRecord> {
   const [row] = await db<OrganisationInvitationRecord>(INVITATIONS)
@@ -276,6 +279,7 @@ export async function insertInvitation(input: {
       organisation_class: input.organisationClass,
       designation: input.designation,
       title: input.title,
+      expected_end_at: input.expectedEndAt,
       status: "pending",
       expires_at: input.expiresAt,
     })

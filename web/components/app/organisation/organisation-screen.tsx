@@ -12,7 +12,7 @@ import {
 import { ApiError } from "@/lib/api";
 import { formatJoinedDate } from "@/lib/format";
 import {
-  describePlacement,
+  describeStanding,
   describeTimeline,
   fetchOrganisation,
   type Membership,
@@ -128,7 +128,7 @@ export function OrganisationScreen({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-yz-ink">
-                {describePlacement(membership)}
+                {describeStanding(membership)}
               </p>
 
               <p className="mt-0.5 text-[12px] leading-5 text-yz-neutral-600">
@@ -144,8 +144,8 @@ export function OrganisationScreen({
 
           <p className="mt-3 border-t border-yz-neutral-200 pt-3 text-[12px] leading-5 text-yz-neutral-600">
             {membership.isAdmin
-              ? "Admin is a Yahzel access role: you can invite people and set where they sit. It is not a position in the organisation — Administration and Head are, and they are assigned separately."
-              : "Administration is the organisation's leadership class, and Head is the highest position in it. Admin is a separate Yahzel access role."}
+              ? "Admin is a Yahzel access role: you can invite people and manage standing. It is not a position in the organisation — Administration is, and it is assigned separately."
+              : "Administration is the organisation's leadership class. Admin is a separate Yahzel access role."}
           </p>
         </PanelGroup>
 

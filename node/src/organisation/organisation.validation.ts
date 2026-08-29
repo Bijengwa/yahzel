@@ -221,6 +221,49 @@ export function validateDesignation(raw: unknown): Validated<Designation> {
   return { ok: true, value };
 }
 
+/**
+ * The planned end date, known up front. Optional for most participation, but
+ * `checkExpectedEndDate` requires it for an internship.
+ */
+export function validateExpectedEndDate(raw: unknown): Validated<string | null> {
+  const value = String(raw ?? "").trim();
+
+  if (!value) {
+    return { ok: true, value: null };
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      ok: false,
+      errors: [{ field: "expectedEndAt", message: "Enter a valid date." }],
+    };
+  }
+
+  return { ok: true, value: date.toISOString() };
+}
+
+/**
+ * An internship is time-bound by definition — Yahzel refuses to open one
+ * without an end date rather than silently leaving it open-ended.
+ */
+export function checkExpectedEndDate(
+  participationType: string,
+  expectedEndAt: string | null,
+): FieldError[] {
+  if (participationType === "intern" && !expectedEndAt) {
+    return [
+      {
+        field: "expectedEndAt",
+        message: "An internship needs an end date.",
+      },
+    ];
+  }
+
+  return [];
+}
+
 export function validateMembershipStatus(
   raw: unknown,
 ): Validated<MembershipStatus> {
