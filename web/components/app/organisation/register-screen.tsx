@@ -17,17 +17,12 @@ const EMPTY = {
   type: "",
   country: "",
   description: "",
-  title: "",
-  participationType: "employee",
 };
 
 /**
  * Registering an organisation. Deliberately short: a name, what kind of
- * organisation it is, where it is, and how the registrant takes part.
- *
- * Registering makes you an Admin — a Yahzel access role — and nothing more.
- * Head is a position inside the Administration class, and the organisation
- * assigns it deliberately afterwards.
+ * organisation it is, where it is, and what it does. Registering makes the
+ * registrant an Admin — a Yahzel access role — and nothing more.
  */
 export function RegisterOrganisationScreen() {
   const router = useRouter();
@@ -56,8 +51,6 @@ export function RegisterOrganisationScreen() {
         type: form.type,
         country: form.country || null,
         description: form.description || null,
-        title: form.title || null,
-        participationType: form.participationType,
       });
 
       router.push(`/organisation/${organisation.id}`);
@@ -97,7 +90,7 @@ export function RegisterOrganisationScreen() {
             void submit();
           }}
         >
-          <PanelGroup title="The organisation">
+          <PanelGroup title="Register organisation">
             <div className="grid max-w-xl gap-3">
               <TextField
                 id="name"
@@ -150,48 +143,6 @@ export function RegisterOrganisationScreen() {
                 error={errors.description}
                 onChange={(event) => update("description", event.target.value)}
               />
-            </div>
-          </PanelGroup>
-
-          <PanelGroup title="You, in this organisation">
-            <div className="grid max-w-xl gap-3">
-              <p className="text-[12.5px] leading-6 text-yz-neutral-600">
-                Registering makes you an{" "}
-                <strong className="text-yz-ink">Admin</strong> — a Yahzel
-                access role that lets you invite people and set where they
-                sit. It does <strong className="text-yz-ink">not</strong> make
-                you the Head: Head is a position inside the organisation&rsquo;s
-                Administration, and you can assign it — to yourself or to
-                somebody else — once the organisation exists.
-              </p>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TextField
-                  id="title"
-                  label="Your title"
-                  placeholder="Founder &amp; CEO"
-                  hint="Optional, and entirely your words."
-                  value={form.title}
-                  error={errors.title}
-                  onChange={(event) => update("title", event.target.value)}
-                />
-
-                <SelectField
-                  id="participationType"
-                  label="How you take part"
-                  value={form.participationType}
-                  error={errors.participationType}
-                  onChange={(event) =>
-                    update("participationType", event.target.value)
-                  }
-                >
-                  {vocabulary.participationTypes.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </SelectField>
-              </div>
             </div>
           </PanelGroup>
 

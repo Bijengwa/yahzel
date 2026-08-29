@@ -166,8 +166,6 @@ export type RegisterOrganisationInput = {
   type: string;
   country: string | null;
   description: string | null;
-  title: string | null;
-  participationType: string;
 };
 
 export function registerOrganisation(

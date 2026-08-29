@@ -42,8 +42,6 @@ export async function createOrganisationWithAdmin(input: {
   country: string | null;
   description: string | null;
   createdBy: number;
-  participationType: string;
-  title: string | null;
 }): Promise<{
   organisation: OrganisationRecord;
   membership: OrganisationMemberRecord;
@@ -63,15 +61,19 @@ export async function createOrganisationWithAdmin(input: {
       throw new Error("The organisation row was not returned after insert.");
     }
 
+    // participation_type and designation are notNullable columns but are no
+    // longer user-facing at registration — "member" is a neutral
+    // compatibility value until the creator's real participation is set, or
+    // the future Work/hierarchy system assigns a position.
     const [membership] = await trx<OrganisationMemberRecord>(MEMBERS)
       .insert({
         organisation_id: organisation.id,
         profile_id: input.createdBy,
         system_role: "admin",
-        participation_type: input.participationType,
+        participation_type: "member",
         organisation_class: "member",
         designation: "member",
-        title: input.title,
+        title: null,
         status: "active",
         joined_at: trx.fn.now() as unknown as string,
       })

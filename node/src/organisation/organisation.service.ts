@@ -331,18 +331,15 @@ export type RegisterInput = {
   type?: unknown;
   country?: unknown;
   description?: unknown;
-  /** What this organisation calls the registrant. Free text, optional. */
-  title?: unknown;
-  /** Kept from the previous contract, read as `title` when it is the only one. */
-  headTitle?: unknown;
-  participationType?: unknown;
 };
 
 /**
  * Registering an organisation makes the registrant its **Admin** — a Yahzel
  * access role — and nothing else. They are not made the Head: Head is a
  * position inside the Administration class, and the organisation assigns it
- * deliberately afterwards (see updateStanding).
+ * deliberately afterwards (see updateStanding). Title and participation
+ * belong to the person's membership, not to registering the organisation,
+ * and are collected later when they are invited or added.
  */
 export async function registerOrganisation(
   userId: number,
@@ -354,26 +351,12 @@ export async function registerOrganisation(
   const type = validateOrganisationType(input.type);
   const country = validateOrganisationCountry(input.country);
   const description = validateDescription(input.description);
-  const title = validateTitle(input.title ?? input.headTitle);
-  const participationType = validateParticipationType(input.participationType);
 
-  const errors: FieldError[] = [
-    name,
-    type,
-    country,
-    description,
-    title,
-    participationType,
-  ].flatMap((result) => (result.ok ? [] : result.errors));
+  const errors: FieldError[] = [name, type, country, description].flatMap(
+    (result) => (result.ok ? [] : result.errors),
+  );
 
-  if (
-    !name.ok ||
-    !type.ok ||
-    !country.ok ||
-    !description.ok ||
-    !title.ok ||
-    !participationType.ok
-  ) {
+  if (!name.ok || !type.ok || !country.ok || !description.ok) {
     throw new OrganisationError(422, errors);
   }
 
@@ -383,8 +366,6 @@ export async function registerOrganisation(
     country: country.value,
     description: description.value,
     createdBy: userId,
-    participationType: participationType.value,
-    title: title.value,
   });
 
   return {
