@@ -13,13 +13,7 @@ import {
 } from "@/components/ui/panel";
 import { ApiError } from "@/lib/api";
 import { changePassword } from "@/lib/profile";
-import {
-  MoonIcon,
-  SunIcon,
-  SystemIcon,
-  useTheme,
-  type Theme,
-} from "@/components/theme/theme-provider";
+import { ThemeSwitch } from "@/components/theme/theme-provider";
 import { LogoutDialog } from "./logout-dialog";
 
 type Status = { tone: "ok" | "error"; message: string } | null;
@@ -29,48 +23,6 @@ const EMPTY = {
   newPassword: "",
   confirmPassword: "",
 };
-
-const THEME_OPTIONS: { value: Theme; label: string; icon: typeof SunIcon }[] =
-  [
-    { value: "light", label: "Light", icon: SunIcon },
-    { value: "dark", label: "Dark", icon: MoonIcon },
-    { value: "system", label: "System", icon: SystemIcon },
-  ];
-
-function ThemeControl() {
-  const { theme, setTheme } = useTheme();
-
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Theme"
-      className="inline-flex rounded-sm border border-yz-neutral-300 p-0.5"
-    >
-      {THEME_OPTIONS.map((option) => {
-        const active = theme === option.value;
-        const Icon = option.icon;
-
-        return (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            onClick={() => setTheme(option.value)}
-            className={`flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-[12px] font-semibold transition-colors duration-150 ${
-              active
-                ? "bg-yz-neutral-200 text-yz-ink"
-                : "text-yz-neutral-600 hover:text-yz-ink"
-            }`}
-          >
-            <Icon width={14} height={14} />
-            <span>{option.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 function PasswordRow() {
   const [open, setOpen] = useState(false);
@@ -210,7 +162,7 @@ export function SettingsScreen() {
           <PanelRow
             label="Theme"
             description="System follows your device's light/dark setting."
-            trailing={<ThemeControl />}
+            trailing={<ThemeSwitch />}
           />
         </PanelGroup>
 

@@ -12,6 +12,7 @@ import {
 } from "./auth.repository.js";
 
 import { allocateUsername } from "../shared/username.js";
+import { linkInvitationsToNewProfile } from "../organisation/organisation.service.js";
 
 import {
   validateLoginInput,
@@ -110,6 +111,11 @@ export async function registerUser(
     username,
     passwordHash,
   });
+
+  // Somebody may have been invited to an organisation by this address
+  // before they had an account. The invitation is attached to them now and
+  // simply becomes visible inside Yahzel — registering never accepts it.
+  await linkInvitationsToNewProfile(user.id, user.email);
 
   await createVerificationOtp(user.id);
 

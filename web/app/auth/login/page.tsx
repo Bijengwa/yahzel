@@ -4,6 +4,9 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { TextField } from "@/components/ui/field";
+import { AuthMessage, AuthShell, AuthSubmit } from "../auth-shell";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function Login() {
@@ -62,95 +65,54 @@ export default function Login() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-yz-bg px-6 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mb-6 text-2xl font-extrabold tracking-tight text-yz-ink">
-            yahzel
-          </div>
+    <AuthShell
+      title="Welcome back"
+      description="Sign in to continue to Yahzel."
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/auth/register"
+            className="font-bold text-yz-ink hover:text-yz-accent"
+          >
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit}>
+        {error && <AuthMessage tone="error">{error}</AuthMessage>}
 
-          <h1 className="text-3xl font-extrabold tracking-tight text-yz-ink">
-            Welcome back
-          </h1>
+        <div className="space-y-3">
+          <TextField
+            id="email"
+            name="email"
+            type="email"
+            label="Email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+          />
 
-          <p className="mt-2 text-sm text-yz-neutral-600">
-            Sign in to continue to Yahzel.
-          </p>
+          <TextField
+            id="password"
+            name="password"
+            type="password"
+            label="Password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Enter your password"
+          />
+
+          <AuthSubmit loading={loading} loadingLabel="Signing in…">
+            Sign in
+          </AuthSubmit>
         </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="border border-yz-neutral-300 bg-white p-6 sm:p-8"
-        >
-          {error && (
-            <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-5">
-            <div>
-              <label
-                htmlFor="email"
-                className="mb-2 block text-sm font-semibold text-yz-ink"
-              >
-                Email
-              </label>
-
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="w-full border border-yz-neutral-300 bg-white px-4 py-3 text-sm text-yz-ink outline-none transition focus:border-yz-ink"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="mb-2 block text-sm font-semibold text-yz-ink"
-              >
-                Password
-              </label>
-
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="w-full border border-yz-neutral-300 bg-white px-4 py-3 text-sm text-yz-ink outline-none transition focus:border-yz-ink"
-                placeholder="Enter your password"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-yz-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-yz-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-          </div>
-
-          <div className="mt-6 border-t border-yz-neutral-200 pt-6 text-center text-sm text-yz-neutral-600">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/auth/register"
-              className="font-bold text-yz-ink hover:text-yz-accent"
-            >
-              Create an account
-            </Link>
-          </div>
-        </form>
-      </div>
-    </main>
+      </form>
+    </AuthShell>
   );
 }

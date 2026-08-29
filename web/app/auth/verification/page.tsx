@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { FieldLabel } from "@/components/ui/field";
+import { AuthMessage, AuthShell, AuthSubmit } from "../auth-shell";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 type VerificationUser = {
@@ -130,87 +133,55 @@ export default function VerificationPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-yz-bg px-6 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mb-6 text-2xl font-extrabold tracking-tight text-yz-ink">
-            yahzel
-          </div>
+    <AuthShell
+      title="Verify your email"
+      description={
+        <>
+          We sent a 6-digit verification code to{" "}
+          <span className="font-semibold text-yz-ink">{user.email}</span>.
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit}>
+        {error && <AuthMessage tone="error">{error}</AuthMessage>}
 
-          <h1 className="text-3xl font-extrabold tracking-tight text-yz-ink">
-            Verify your email
-          </h1>
+        {message && <AuthMessage tone="ok">{message}</AuthMessage>}
 
-          <p className="mt-2 text-sm leading-6 text-yz-neutral-600">
-            We sent a 6-digit verification code to{" "}
-            <span className="font-semibold text-yz-ink">{user.email}</span>.
-          </p>
+        <FieldLabel htmlFor="otp">Verification code</FieldLabel>
+
+        <input
+          id="otp"
+          name="otp"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          required
+          value={otp}
+          onChange={(event) =>
+            setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))
+          }
+          className="w-full rounded-sm border border-yz-neutral-300 bg-yz-panel px-3 py-2.5 text-center text-[20px] tracking-[0.4em] text-yz-ink outline-none transition-colors duration-150 focus:border-yz-ink"
+          placeholder="000000"
+        />
+
+        <div className="mt-4">
+          <AuthSubmit loading={loading} loadingLabel="Verifying…">
+            Verify email
+          </AuthSubmit>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="border border-yz-neutral-300 bg-white p-6 sm:p-8"
-        >
-          {error && (
-            <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="mb-5 border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {message}
-            </div>
-          )}
-
-          <div>
-            <label
-              htmlFor="otp"
-              className="mb-2 block text-sm font-semibold text-yz-ink"
-            >
-              Verification code
-            </label>
-
-            <input
-              id="otp"
-              name="otp"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              required
-              value={otp}
-              onChange={(event) =>
-                setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-              className="w-full border border-yz-neutral-300 bg-white px-4 py-3 text-center text-xl tracking-[0.4em] text-yz-ink outline-none transition focus:border-yz-ink"
-              placeholder="000000"
-            />
-          </div>
-
+        <p className="mt-4 text-center text-[12.5px] text-yz-neutral-600">
+          Didn&apos;t receive a code?{" "}
           <button
-            type="submit"
-            disabled={loading}
-            className="mt-5 w-full bg-yz-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-yz-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+            type="button"
+            onClick={handleResend}
+            disabled={resending}
+            className="font-bold text-yz-ink hover:text-yz-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Verifying..." : "Verify email"}
+            {resending ? "Generating…" : "Resend it"}
           </button>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-yz-neutral-600">
-              Didn&apos;t receive a code?
-            </p>
-
-            <button
-              type="button"
-              onClick={handleResend}
-              disabled={resending}
-              className="mt-2 text-sm font-bold text-yz-ink hover:text-yz-accent disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {resending ? "Generating..." : "Resend verification code"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </main>
+        </p>
+      </form>
+    </AuthShell>
   );
 }

@@ -10,25 +10,29 @@ import { PageHeader, Panel, PanelGroup, StatusMessage } from "@/components/ui/pa
 import { ApiError } from "@/lib/api";
 import { registerOrganisation } from "@/lib/organisation";
 import { useCountries } from "../profile/use-countries";
-import { useOrganisationTypes } from "./use-organisation-types";
+import { useOrganisationVocabulary } from "./use-organisation-types";
 
 const EMPTY = {
   name: "",
   type: "",
   country: "",
   description: "",
-  headTitle: "",
+  title: "",
+  participationType: "employee",
 };
 
 /**
  * Registering an organisation. Deliberately short: a name, what kind of
- * organisation it is, where it is, and what it calls its highest-ranking
- * person. Everything else belongs to the administration that follows.
+ * organisation it is, where it is, and how the registrant takes part.
+ *
+ * Registering makes you an Admin — a Yahzel access role — and nothing more.
+ * Head is a position inside the Administration class, and the organisation
+ * assigns it deliberately afterwards.
  */
 export function RegisterOrganisationScreen() {
   const router = useRouter();
   const countries = useCountries();
-  const types = useOrganisationTypes();
+  const vocabulary = useOrganisationVocabulary();
 
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -52,7 +56,8 @@ export function RegisterOrganisationScreen() {
         type: form.type,
         country: form.country || null,
         description: form.description || null,
-        headTitle: form.headTitle || null,
+        title: form.title || null,
+        participationType: form.participationType,
       });
 
       router.push(`/organisation/${organisation.id}`);
@@ -113,7 +118,7 @@ export function RegisterOrganisationScreen() {
                 >
                   <option value="">Choose a type</option>
 
-                  {types.map((option) => (
+                  {vocabulary.organisationTypes.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -151,22 +156,42 @@ export function RegisterOrganisationScreen() {
           <PanelGroup title="You, in this organisation">
             <div className="grid max-w-xl gap-3">
               <p className="text-[12.5px] leading-6 text-yz-neutral-600">
-                Registering makes you an <strong className="text-yz-ink">admin</strong>{" "}
-                — a Yahzel access role — and the organisation&rsquo;s{" "}
-                <strong className="text-yz-ink">head</strong>, its
-                highest-ranking position. What that position is called is
-                yours to decide.
+                Registering makes you an{" "}
+                <strong className="text-yz-ink">Admin</strong> — a Yahzel
+                access role that lets you invite people and set where they
+                sit. It does <strong className="text-yz-ink">not</strong> make
+                you the Head: Head is a position inside the organisation&rsquo;s
+                Administration, and you can assign it — to yourself or to
+                somebody else — once the organisation exists.
               </p>
 
-              <TextField
-                id="headTitle"
-                label="Your title"
-                placeholder="Founder &amp; CEO"
-                hint="Optional, and entirely your words — President, Director General, Executive Director, anything your organisation uses."
-                value={form.headTitle}
-                error={errors.headTitle}
-                onChange={(event) => update("headTitle", event.target.value)}
-              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField
+                  id="title"
+                  label="Your title"
+                  placeholder="Founder &amp; CEO"
+                  hint="Optional, and entirely your words."
+                  value={form.title}
+                  error={errors.title}
+                  onChange={(event) => update("title", event.target.value)}
+                />
+
+                <SelectField
+                  id="participationType"
+                  label="How you take part"
+                  value={form.participationType}
+                  error={errors.participationType}
+                  onChange={(event) =>
+                    update("participationType", event.target.value)
+                  }
+                >
+                  {vocabulary.participationTypes.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </SelectField>
+              </div>
             </div>
           </PanelGroup>
 

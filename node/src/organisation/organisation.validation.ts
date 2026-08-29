@@ -5,9 +5,18 @@ import {
   type Validated,
 } from "../profile/profile.validation.js";
 import {
+  ADMINISTRATION_DESIGNATIONS,
+  isDesignation,
+  isMembershipStatus,
+  isOrganisationClass,
   isOrganisationType,
+  isParticipationType,
   isSystemRole,
+  type Designation,
+  type MembershipStatus,
+  type OrganisationClass,
   type OrganisationType,
+  type ParticipationType,
   type SystemRole,
 } from "./organisation.types.js";
 
@@ -96,8 +105,9 @@ export function validateDescription(raw: unknown): Validated<string | null> {
 
 /**
  * The organisation's own word for the position — "Founder & CEO",
- * "President", "Director General". Yahzel never offers a fixed list here and
- * never rewrites what was typed; it only checks that it is a sane length.
+ * "President", "Director General", "Accountant", "Community Volunteer".
+ * Yahzel never offers a fixed list here and never rewrites what was typed; it
+ * only checks that it is a sane length.
  */
 export function validateTitle(
   raw: unknown,
@@ -135,11 +145,157 @@ export function validateSystemRole(raw: unknown): Validated<SystemRole> {
   if (!isSystemRole(value)) {
     return {
       ok: false,
+      errors: [{ field: "systemRole", message: "Choose Admin or Member." }],
+    };
+  }
+
+  return { ok: true, value };
+}
+
+/** Employment, internship, volunteering — all one membership, typed. */
+export function validateParticipationType(
+  raw: unknown,
+): Validated<ParticipationType> {
+  if (raw === null || raw === undefined || raw === "") {
+    return { ok: true, value: "employee" };
+  }
+
+  const value = String(raw).trim().toLowerCase();
+
+  if (!isParticipationType(value)) {
+    return {
+      ok: false,
       errors: [
-        { field: "systemRole", message: "Choose Admin or Member." },
+        {
+          field: "participationType",
+          message: "Choose one of the listed participation types.",
+        },
       ],
     };
   }
 
   return { ok: true, value };
+}
+
+/** Administration or Member — the organisation's leadership class. */
+export function validateOrganisationClass(
+  raw: unknown,
+): Validated<OrganisationClass> {
+  if (raw === null || raw === undefined || raw === "") {
+    return { ok: true, value: "member" };
+  }
+
+  const value = String(raw).trim().toLowerCase();
+
+  if (!isOrganisationClass(value)) {
+    return {
+      ok: false,
+      errors: [
+        {
+          field: "organisationClass",
+          message: "Choose Administration or Member.",
+        },
+      ],
+    };
+  }
+
+  return { ok: true, value };
+}
+
+export function validateDesignation(raw: unknown): Validated<Designation> {
+  if (raw === null || raw === undefined || raw === "") {
+    return { ok: true, value: "member" };
+  }
+
+  const value = String(raw).trim().toLowerCase();
+
+  if (!isDesignation(value)) {
+    return {
+      ok: false,
+      errors: [
+        { field: "designation", message: "Choose one of the listed positions." },
+      ],
+    };
+  }
+
+  return { ok: true, value };
+}
+
+export function validateMembershipStatus(
+  raw: unknown,
+): Validated<MembershipStatus> {
+  const value = String(raw ?? "").trim().toLowerCase();
+
+  if (!isMembershipStatus(value)) {
+    return {
+      ok: false,
+      errors: [
+        { field: "status", message: "Choose Active, Inactive or Concluded." },
+      ],
+    };
+  }
+
+  return { ok: true, value };
+}
+
+/**
+ * Head, Director and Manager are Administration positions. Yahzel refuses the
+ * combination rather than quietly moving somebody's class for them — the
+ * organisation should say what it means.
+ */
+export function checkClassAndDesignation(
+  organisationClass: string,
+  designation: string,
+): FieldError[] {
+  if (
+    organisationClass !== "administration" &&
+    ADMINISTRATION_DESIGNATIONS.includes(designation)
+  ) {
+    return [
+      {
+        field: "designation",
+        message:
+          "Head, Director and Manager belong to the Administration class.",
+      },
+    ];
+  }
+
+  return [];
+}
+
+/**
+ * Who an invitation is for: a Yahzel username, or an email address. One of
+ * the two is required, and a value containing "@" is read as an address.
+ */
+export type InviteeIdentifier =
+  | { kind: "email"; value: string }
+  | { kind: "username"; value: string };
+
+export function validateInvitee(raw: unknown): Validated<InviteeIdentifier> {
+  const value = String(raw ?? "").trim();
+
+  const fail = (message: string): Validated<InviteeIdentifier> => ({
+    ok: false,
+    errors: [{ field: "person", message }],
+  });
+
+  if (!value) {
+    return fail("Enter a Yahzel username or an email address.");
+  }
+
+  if (value.includes("@") && !value.startsWith("@")) {
+    const email = validateEmail(value);
+
+    return email.ok
+      ? { ok: true, value: { kind: "email", value: email.value } }
+      : fail("Enter a valid email address.");
+  }
+
+  const username = value.replace(/^@/, "").toLowerCase();
+
+  if (!/^[a-z0-9_]{3,30}$/.test(username)) {
+    return fail("Enter a Yahzel username or an email address.");
+  }
+
+  return { ok: true, value: { kind: "username", value: username } };
 }

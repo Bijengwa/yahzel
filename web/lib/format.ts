@@ -74,3 +74,15 @@ export function formatJoinedDate(iso: string): string {
     year: "numeric",
   });
 }
+
+/** "Sep 2026" — the compact form organisation timelines are written in. */
+export function formatMonthYear(iso: string | null): string | null {
+  if (!iso) {
+    return null;
+  }
+
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric",
+  });
+}

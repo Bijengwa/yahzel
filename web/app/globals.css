@@ -7,8 +7,11 @@
    as <img>, favicon, or app-icon tiles.
    ────────────────────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* The page ground follows the Yahzel theme rather than the operating
+     system: the ThemeProvider puts `.dark` on <html>, so these resolve to
+     whichever surface the chosen theme asks for. */
+  --background: var(--yz-bg);
+  --foreground: var(--yz-ink);
 
   /* Core roles — muted, warm surfaces rather than a bright white page.
      Panel sits a shade lighter than the page ground so cards read as a
@@ -129,13 +132,6 @@
   --color-yz-danger-ink: var(--yz-danger-ink);
 
   --font-brand: var(--font-archivo);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

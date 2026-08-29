@@ -14,13 +14,24 @@ const NAV_LINK =
 
 export function Sidebar({
   onNavigate,
+  variant = "rail",
 }: {
   onNavigate?: () => void;
+  /**
+   * "rail" is the desktop sidebar, which can be collapsed to icons.
+   * "drawer" is the mobile overlay: it is never collapsible — it is either
+   * open or gone — and its control closes it instead.
+   */
+  variant?: "rail" | "drawer";
 }) {
   const pathname = usePathname();
   const { profile } = useProfile();
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(false);
+
+  // A drawer is never a narrower desktop sidebar; it is a full-width panel
+  // that is either open or not on the page at all.
+  const collapsed = variant === "rail" && railCollapsed;
 
   // The desktop rail stays mounted (just display:none) even when the mobile
   // drawer's own Sidebar instance is open, so the knockout mask id must be
@@ -34,7 +45,7 @@ export function Sidebar({
   return (
     <div
       className={`flex h-full flex-col border-r border-yz-neutral-200 bg-yz-panel transition-[width] duration-200 ${
-        collapsed ? "w-14" : "w-[200px]"
+        variant === "drawer" ? "w-full" : collapsed ? "w-14" : "w-[200px]"
       }`}
     >
       {/* Brand + collapse control */}
@@ -60,9 +71,25 @@ export function Sidebar({
 
         <button
           type="button"
-          onClick={() => setCollapsed((current) => !current)}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={() =>
+            variant === "drawer"
+              ? onNavigate?.()
+              : setRailCollapsed((current) => !current)
+          }
+          aria-label={
+            variant === "drawer"
+              ? "Close menu"
+              : collapsed
+                ? "Expand sidebar"
+                : "Collapse sidebar"
+          }
+          title={
+            variant === "drawer"
+              ? "Close menu"
+              : collapsed
+                ? "Expand sidebar"
+                : "Collapse sidebar"
+          }
           className="group relative flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-yz-ink transition-colors hover:bg-yz-neutral-100"
         >
           {collapsed ? (
@@ -95,7 +122,11 @@ export function Sidebar({
           ) : (
             <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
               <path
-                d="M3 5.5h14M3 10h14M3 14.5h14"
+                d={
+                  variant === "drawer"
+                    ? "M5 5l10 10M15 5L5 15"
+                    : "M3 5.5h14M3 10h14M3 14.5h14"
+                }
                 stroke="currentColor"
                 strokeWidth="1.5"
                 strokeLinecap="round"

@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+import { TextField } from "@/components/ui/field";
+import { AuthMessage, AuthShell, AuthSubmit } from "../auth-shell";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -13,9 +16,31 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [invited, setInvited] = useState(false);
+
+  /**
+   * An organisation invitation sent to somebody with no Yahzel account links
+   * here carrying the address it was sent to. Registering with that address
+   * is what makes the waiting invitation theirs to answer — it never accepts
+   * it for them.
+   */
+  useEffect(() => {
+    const invitedEmail = new URLSearchParams(window.location.search).get(
+      "email",
+    );
+
+    if (invitedEmail) {
+      // Reading the URL can only happen after mount; doing it during render
+      // would break hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEmail(invitedEmail);
+      setInvited(true);
+    }
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,6 +49,11 @@ export default function Register() {
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+
+    if (!agreed) {
+      setError("Please agree to the Terms & Conditions to continue.");
       return;
     }
 
@@ -64,137 +94,111 @@ export default function Register() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-yz-bg px-6 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mb-6 text-2xl font-extrabold tracking-tight text-yz-ink">
-            yahzel
-          </div>
+    <AuthShell
+      title="Create your account"
+      description="Get started with Yahzel."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link
+            href="/auth/login"
+            className="font-bold text-yz-ink hover:text-yz-accent"
+          >
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit}>
+        {error && <AuthMessage tone="error">{error}</AuthMessage>}
 
-          <h1 className="text-3xl font-extrabold tracking-tight text-yz-ink">
-            Create your account
-          </h1>
+        {invited && (
+          <AuthMessage tone="ok">
+            You were invited to an organisation. Register with this address and
+            the invitation will be waiting for you inside Yahzel.
+          </AuthMessage>
+        )}
 
-          <p className="mt-2 text-sm text-yz-neutral-600">
-            Get started with Yahzel.
-          </p>
+        <div className="space-y-3">
+          <TextField
+            id="fullName"
+            name="fullName"
+            type="text"
+            label="Full name"
+            autoComplete="name"
+            required
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            placeholder="Your full name"
+          />
+
+          <TextField
+            id="email"
+            name="email"
+            type="email"
+            label="Email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+          />
+
+          <TextField
+            id="password"
+            name="password"
+            type="password"
+            label="Password"
+            autoComplete="new-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Create a password"
+          />
+
+          <TextField
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            label="Confirm password"
+            autoComplete="new-password"
+            required
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            placeholder="Confirm your password"
+          />
+
+          <label
+            htmlFor="terms"
+            className="flex items-start gap-2.5 text-[12.5px] leading-5 text-yz-neutral-700"
+          >
+            <input
+              id="terms"
+              name="terms"
+              type="checkbox"
+              required
+              checked={agreed}
+              onChange={(event) => setAgreed(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--yz-accent)]"
+            />
+
+            <span>
+              I agree to the{" "}
+              <Link
+                href="/legal/terms"
+                className="font-bold text-yz-ink underline underline-offset-2 hover:text-yz-accent"
+              >
+                Terms &amp; Conditions
+              </Link>
+              .
+            </span>
+          </label>
+
+          <AuthSubmit loading={loading} loadingLabel="Creating account…">
+            Create account
+          </AuthSubmit>
         </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="border border-yz-neutral-300 bg-white p-6 sm:p-8"
-        >
-          {error && (
-            <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-5">
-            <div>
-              <label
-                htmlFor="fullName"
-                className="mb-2 block text-sm font-semibold text-yz-ink"
-              >
-                Full Name
-              </label>
-
-              <input
-                id="fullName"
-                name="fullName"
-                type="text"
-                autoComplete="name"
-                required
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                className="w-full border border-yz-neutral-300 bg-white px-4 py-3 text-sm text-yz-ink outline-none transition focus:border-yz-ink"
-                placeholder="Your full name"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="email"
-                className="mb-2 block text-sm font-semibold text-yz-ink"
-              >
-                Email
-              </label>
-
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="w-full border border-yz-neutral-300 bg-white px-4 py-3 text-sm text-yz-ink outline-none transition focus:border-yz-ink"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="mb-2 block text-sm font-semibold text-yz-ink"
-              >
-                Password
-              </label>
-
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="w-full border border-yz-neutral-300 bg-white px-4 py-3 text-sm text-yz-ink outline-none transition focus:border-yz-ink"
-                placeholder="Create a password"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="mb-2 block text-sm font-semibold text-yz-ink"
-              >
-                Confirm Password
-              </label>
-
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                className="w-full border border-yz-neutral-300 bg-white px-4 py-3 text-sm text-yz-ink outline-none transition focus:border-yz-ink"
-                placeholder="Confirm your password"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-yz-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-yz-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Creating account..." : "Create account"}
-            </button>
-          </div>
-
-          <div className="mt-6 border-t border-yz-neutral-200 pt-6 text-center text-sm text-yz-neutral-600">
-            Already have an account?{" "}
-            <Link
-              href="/auth/login"
-              className="font-bold text-yz-ink hover:text-yz-accent"
-            >
-              Sign in
-            </Link>
-          </div>
-        </form>
-      </div>
-    </main>
+      </form>
+    </AuthShell>
   );
 }

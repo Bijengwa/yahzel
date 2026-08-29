@@ -1,4 +1,5 @@
 import { apiRequest } from "./api";
+import { formatMonthYear } from "./format";
 
 /* ------------------------------------------------------------------------
    Shapes, mirroring what node/src/organisation serialises
@@ -22,24 +23,39 @@ export type Organisation = {
 };
 
 /**
- * Three separate ideas, never collapsed into one:
+ * Four separate ideas, never collapsed into one:
  *
- *   systemRole  — Yahzel access. "admin" is a system role, not a job.
- *   designation — position in the organisation's structure. "head" is the
- *                 universal highest-ranking designation.
- *   title       — what the organisation itself calls the person, in their own
- *                 words: "Founder & CEO", "President", "Director General".
+ *   systemRole         — Yahzel access. "admin" is a permission, not a job.
+ *   organisationClass  — Administration or Member: the organisation's own
+ *                        leadership structure. Not the same thing as admin.
+ *   designation        — the position held inside that class; "head" is the
+ *                        highest-ranking one.
+ *   title              — what the organisation itself calls the person:
+ *                        "Founder & CEO", "Accountant", "Community Volunteer".
  */
 export type Membership = {
   id: number;
+
   systemRole: string;
-  designation: string;
-  isHead: boolean;
   isAdmin: boolean;
+
+  organisationClass: string;
+  organisationClassLabel: string;
+  isAdministration: boolean;
+
+  designation: string;
+  designationLabel: string;
+  isHead: boolean;
+
+  participationType: string;
+  participationLabel: string;
+
   title: string | null;
+
+  /** active | inactive | concluded */
   status: string;
-  invitedAt: string;
   joinedAt: string | null;
+  leftAt: string | null;
 };
 
 export type Participation = {
@@ -55,33 +71,79 @@ export type Member = Membership & {
   profilePictureUrl: string | null;
 };
 
+export type Invitation = {
+  id: number;
+  /** pending | accepted | declined | cancelled | expired */
+  status: string;
+
+  email: string;
+  profileId: number | null;
+
+  systemRole: string;
+  organisationClass: string;
+  organisationClassLabel: string;
+  designation: string;
+  designationLabel: string;
+  participationType: string;
+  participationLabel: string;
+  title: string | null;
+
+  invitedBy: {
+    id: number;
+    fullName: string | null;
+    username: string | null;
+    systemRole: string | null;
+    title: string | null;
+  };
+
+  organisation: Organisation;
+
+  createdAt: string;
+  expiresAt: string | null;
+  respondedAt: string | null;
+};
+
 /* ------------------------------------------------------------------------
    Reference data
    --------------------------------------------------------------------- */
 
-let typeCache: OrganisationTypeOption[] | null = null;
-let typesInFlight: Promise<OrganisationTypeOption[]> | null = null;
+export type OrganisationVocabulary = {
+  organisationTypes: OrganisationTypeOption[];
+  participationTypes: OrganisationTypeOption[];
+  organisationClasses: OrganisationTypeOption[];
+  designations: OrganisationTypeOption[];
+};
 
-/** The API owns the type list, so the picker and the validator agree. */
-export function loadOrganisationTypes(): Promise<OrganisationTypeOption[]> {
-  if (typeCache) {
-    return Promise.resolve(typeCache);
+const EMPTY_VOCABULARY: OrganisationVocabulary = {
+  organisationTypes: [],
+  participationTypes: [],
+  organisationClasses: [],
+  designations: [],
+};
+
+let vocabularyCache: OrganisationVocabulary | null = null;
+let vocabularyInFlight: Promise<OrganisationVocabulary> | null = null;
+
+/** The API owns these lists, so the pickers and the validator agree. */
+export function loadOrganisationVocabulary(): Promise<OrganisationVocabulary> {
+  if (vocabularyCache) {
+    return Promise.resolve(vocabularyCache);
   }
 
-  if (!typesInFlight) {
-    typesInFlight = apiRequest<{ organisationTypes: OrganisationTypeOption[] }>(
+  if (!vocabularyInFlight) {
+    vocabularyInFlight = apiRequest<Partial<OrganisationVocabulary>>(
       "/api/reference/organisation-types",
     )
       .then((response) => {
-        typeCache = response.organisationTypes;
-        return typeCache;
+        vocabularyCache = { ...EMPTY_VOCABULARY, ...response };
+        return vocabularyCache;
       })
       .finally(() => {
-        typesInFlight = null;
+        vocabularyInFlight = null;
       });
   }
 
-  return typesInFlight;
+  return vocabularyInFlight;
 }
 
 /* ------------------------------------------------------------------------
@@ -90,8 +152,13 @@ export function loadOrganisationTypes(): Promise<OrganisationTypeOption[]> {
 
 export function fetchParticipation(): Promise<{
   participation: Participation[];
+  invitations: Invitation[];
 }> {
   return apiRequest("/api/organisations");
+}
+
+export function fetchMyInvitations(): Promise<{ invitations: Invitation[] }> {
+  return apiRequest("/api/organisations/invitations");
 }
 
 export type RegisterOrganisationInput = {
@@ -99,12 +166,17 @@ export type RegisterOrganisationInput = {
   type: string;
   country: string | null;
   description: string | null;
-  headTitle: string | null;
+  title: string | null;
+  participationType: string;
 };
 
 export function registerOrganisation(
   input: RegisterOrganisationInput,
-): Promise<{ message: string; organisation: Organisation; membership: Membership }> {
+): Promise<{
+  message: string;
+  organisation: Organisation;
+  membership: Membership;
+}> {
   return apiRequest("/api/organisations", { method: "POST", body: input });
 }
 
@@ -114,47 +186,91 @@ export function fetchOrganisation(
   return apiRequest(`/api/organisations/${id}`);
 }
 
-export function fetchOrganisationPeople(
-  id: number,
-): Promise<{ members: Member[] }> {
+export function fetchOrganisationPeople(id: number): Promise<{
+  members: Member[];
+  administration: Member[];
+  people: Member[];
+}> {
   return apiRequest(`/api/organisations/${id}/members`);
 }
 
 export type InviteInput = {
-  email: string;
+  /** A Yahzel username or an email address. */
+  person: string;
   title: string | null;
   systemRole: string;
+  organisationClass: string;
+  designation: string;
+  participationType: string;
 };
 
 export function invitePerson(
   id: number,
   input: InviteInput,
-): Promise<{ message: string; member: Member }> {
-  return apiRequest(`/api/organisations/${id}/members`, {
+): Promise<{ message: string; invitation: Invitation | null }> {
+  return apiRequest(`/api/organisations/${id}/invitations`, {
     method: "POST",
     body: input,
   });
 }
 
-export function removePerson(
+export function fetchOrganisationInvitations(
+  id: number,
+): Promise<{ invitations: Invitation[] }> {
+  return apiRequest(`/api/organisations/${id}/invitations`);
+}
+
+export function withdrawInvitation(
+  id: number,
+  invitationId: number,
+): Promise<{ message: string }> {
+  return apiRequest(`/api/organisations/${id}/invitations/${invitationId}`, {
+    method: "DELETE",
+  });
+}
+
+export type StandingInput = {
+  systemRole?: string;
+  organisationClass?: string;
+  designation?: string;
+  participationType?: string;
+  title?: string | null;
+  status?: string;
+};
+
+/** The one way somebody becomes Head, joins Administration, or is concluded. */
+export function updateStanding(
   id: number,
   memberId: number,
-): Promise<{ message: string }> {
+  input: StandingInput,
+): Promise<{ message: string; membership: Membership }> {
+  return apiRequest(`/api/organisations/${id}/members/${memberId}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export function concludeMembership(
+  id: number,
+  memberId: number,
+): Promise<{ message: string; membership: Membership }> {
   return apiRequest(`/api/organisations/${id}/members/${memberId}`, {
     method: "DELETE",
   });
 }
 
 export function acceptInvitation(
-  id: number,
+  invitationId: number,
 ): Promise<{ message: string; membership: Membership }> {
-  return apiRequest(`/api/organisations/${id}/membership/accept`, {
+  return apiRequest(`/api/organisations/invitations/${invitationId}/accept`, {
     method: "POST",
   });
 }
 
-export function declineInvitation(id: number): Promise<{ message: string }> {
-  return apiRequest(`/api/organisations/${id}/membership/decline`, {
+export function declineInvitation(
+  invitationId: number,
+): Promise<{ message: string }> {
+  return apiRequest(`/api/organisations/invitations/${invitationId}/decline`, {
     method: "POST",
   });
 }
@@ -164,14 +280,75 @@ export function declineInvitation(id: number): Promise<{ message: string }> {
    --------------------------------------------------------------------- */
 
 /**
- * How a person's standing reads in the interface. The organisation's own
- * title wins when there is one — Yahzel only falls back to its structural
- * word when the organisation has not chosen its own.
+ * How a person's standing reads. The organisation's own title wins when there
+ * is one — Yahzel only falls back to its structural word when the
+ * organisation has not chosen its own.
  */
 export function describeStanding(membership: Membership): string {
   if (membership.title) {
     return membership.title;
   }
 
-  return membership.isHead ? "Head" : "Member";
+  return membership.isHead
+    ? "Head"
+    : membership.isAdministration
+      ? membership.designationLabel
+      : "Member";
+}
+
+/**
+ * "Accountant · Member" — the title the organisation chose, then where that
+ * person sits in it. Head and the other Administration positions are named
+ * rather than reduced to the class.
+ */
+export function describePlacement(membership: Membership): string {
+  const place = membership.isHead
+    ? "Head"
+    : membership.designation !== "member"
+      ? membership.designationLabel
+      : membership.organisationClassLabel;
+
+  return [describeStanding(membership), place].filter(Boolean).join(" · ");
+}
+
+/**
+ * "Sep 2026 — Present", "Jan 2024 — Aug 2025". An end date is never invented:
+ * a membership that has not ended simply reads as continuing.
+ */
+export function describeTimeline(membership: Membership): string {
+  const start = formatMonthYear(membership.joinedAt);
+
+  if (!start) {
+    return "";
+  }
+
+  if (membership.status === "concluded") {
+    const end = formatMonthYear(membership.leftAt);
+
+    return end ? `${start} — ${end}` : `${start} —`;
+  }
+
+  return membership.status === "active" ? `${start} — Present` : `${start} —`;
+}
+
+/** ACTIVE / INACTIVE / CONCLUDED, as the cards show it. */
+export function statusLabel(status: string): string {
+  return status.toUpperCase();
+}
+
+/**
+ * "Datius (Admin) from Musabe Schools invited you to join as Accountant."
+ * Admin is named as the Yahzel access role it is, never as a job.
+ */
+export function describeInviter(invitation: Invitation): string {
+  const name = invitation.invitedBy.fullName ?? "Someone";
+
+  const standing = [
+    invitation.invitedBy.title,
+    invitation.invitedBy.systemRole === "admin" ? "Admin" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return standing ? `${name} (${standing})` : name;
 }

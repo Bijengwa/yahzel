@@ -1,34 +1,59 @@
 import { findProfileById } from "../profile/profile.repository.js";
-import { findUserByEmail } from "../auth/auth.repository.js";
+import {
+  findUserByEmail,
+  findUserByUsername,
+} from "../auth/auth.repository.js";
 import { findCountry } from "../shared/countries.js";
 import type { ProfileRecord } from "../db/profile-record.js";
 import type {
+  InvitationWithContext,
   MembershipWithOrganisation,
+  OrganisationInvitationRecord,
   OrganisationMemberRecord,
   OrganisationMemberWithProfile,
   OrganisationRecord,
 } from "./organisation.record.js";
 import {
   countActiveMembers,
-  createOrganisationWithHead,
-  deleteMembership,
+  countActiveWith,
+  createOrganisationWithAdmin,
   describeUniqueViolation,
+  expireDueInvitations,
+  findInvitationById,
+  findInvitationWithContext,
   findMembership,
   findMembershipById,
-  findOpenInvitationByEmail,
+  findOpenInvitation,
   findOrganisationById,
   insertInvitation,
+  insertMembership,
+  linkInvitationsToProfile,
+  listInvitationsForPerson,
   listMembers,
+  listOrganisationInvitations,
   listParticipation,
+  updateInvitation,
   updateMembership,
 } from "./organisation.repository.js";
-import { organisationTypeLabel } from "./organisation.types.js";
+import { sendInvitationEmail } from "./organisation.email.js";
 import {
+  INVITATION_EXPIRY_DAYS,
+  designationLabel,
+  organisationClassLabel,
+  organisationTypeLabel,
+  participationTypeLabel,
+} from "./organisation.types.js";
+import {
+  checkClassAndDesignation,
   validateDescription,
-  validateEmail,
+  validateDesignation,
+  validateInvitee,
+  validateMembershipStatus,
+  validateOrganisationClass,
   validateOrganisationCountry,
   validateOrganisationName,
   validateOrganisationType,
+  validateParticipationType,
   validateSystemRole,
   validateTitle,
   type FieldError,
@@ -82,22 +107,39 @@ function publicOrganisation(
 }
 
 /**
- * One person's standing in one organisation. The three ideas stay separate on
- * the wire exactly as they are separate in the database: `systemRole` is
- * Yahzel access, `designation` is structural position, `title` is whatever the
- * organisation itself calls the person.
+ * One person's standing in one organisation. Four ideas stay separate on the
+ * wire exactly as they are separate in the database:
+ *
+ *   systemRole         — Yahzel access. "admin" is a permission, not a job.
+ *   organisationClass  — Administration or Member: the organisation's own
+ *                        leadership structure, unrelated to systemRole.
+ *   designation        — the position held in that class; "head" is the
+ *                        highest-ranking one.
+ *   title              — what the organisation itself calls the person.
  */
 function publicMembership(record: OrganisationMemberRecord) {
   return {
     id: record.id,
+
     systemRole: record.system_role,
-    designation: record.designation,
-    isHead: record.designation === "head",
     isAdmin: record.system_role === "admin",
+
+    organisationClass: record.organisation_class,
+    organisationClassLabel: organisationClassLabel(record.organisation_class),
+    isAdministration: record.organisation_class === "administration",
+
+    designation: record.designation,
+    designationLabel: designationLabel(record.designation),
+    isHead: record.designation === "head",
+
+    participationType: record.participation_type,
+    participationLabel: participationTypeLabel(record.participation_type),
+
     title: record.title,
+
     status: record.status,
-    invitedAt: record.created_at,
     joinedAt: record.joined_at,
+    leftAt: record.left_at,
   };
 }
 
@@ -107,16 +149,63 @@ function publicMember(record: OrganisationMemberWithProfile) {
     profileId: record.profile_id,
     fullName: record.full_name,
     username: record.username,
-    // A pending invitation has no profile behind it yet, so the address it
-    // was sent to is all there is to show.
     email: record.profile_email ?? record.email,
     profilePictureUrl: record.profile_picture_url,
+  };
+}
+
+/**
+ * An invitation, with enough context to say who is asking: "Datius (Admin)
+ * from Musabe Schools invited you to join as Accountant."
+ */
+function publicInvitation(record: InvitationWithContext) {
+  return {
+    id: record.id,
+    status: record.status,
+
+    email: record.email,
+    profileId: record.profile_id,
+
+    systemRole: record.system_role,
+    organisationClass: record.organisation_class,
+    organisationClassLabel: organisationClassLabel(record.organisation_class),
+    designation: record.designation,
+    designationLabel: designationLabel(record.designation),
+    participationType: record.participation_type,
+    participationLabel: participationTypeLabel(record.participation_type),
+    title: record.title,
+
+    invitedBy: {
+      id: record.invited_by,
+      fullName: record.inviter_full_name,
+      username: record.inviter_username,
+      /** The inviter's Yahzel access role — never their job. */
+      systemRole: record.inviter_system_role,
+      title: record.inviter_title,
+    },
+
+    organisation: publicOrganisation(
+      {
+        id: record.organisation_id,
+        name: record.organisation_name,
+        type: record.organisation_type,
+        country: record.organisation_country,
+        description: record.organisation_description,
+        created_at: record.organisation_created_at,
+      },
+      0,
+    ),
+
+    createdAt: record.created_at,
+    expiresAt: record.expires_at,
+    respondedAt: record.responded_at,
   };
 }
 
 export type PublicOrganisation = ReturnType<typeof publicOrganisation>;
 export type PublicMembership = ReturnType<typeof publicMembership>;
 export type PublicMember = ReturnType<typeof publicMember>;
+export type PublicInvitation = ReturnType<typeof publicInvitation>;
 
 /* ------------------------------------------------------------------------
    Access
@@ -165,7 +254,10 @@ async function requireMembership(
   return { organisation, membership };
 }
 
-/** Administration is an access decision, so it is made in exactly one place. */
+/**
+ * Yahzel access, and only that. Being in the Administration class does not
+ * grant it, and holding it does not put anybody in Administration.
+ */
 function requireAdmin(membership: OrganisationMemberRecord): void {
   if (membership.status !== "active" || membership.system_role !== "admin") {
     throw OrganisationError.field(
@@ -180,29 +272,54 @@ function requireAdmin(membership: OrganisationMemberRecord): void {
    My participation
    --------------------------------------------------------------------- */
 
+/**
+ * Everything the signed-in person takes part in — including relationships
+ * that have concluded, because that history is what the profile shows — plus
+ * the invitations still waiting for an answer.
+ */
 export async function listMyParticipation(userId: number) {
   const profile = await requireProfile(userId);
 
-  const rows = await listParticipation(userId, profile.email);
+  await expireDueInvitations();
+
+  const rows = await listParticipation(userId);
 
   const counts = await countActiveMembers(
     rows.map((row) => row.organisation_id),
   );
 
-  return rows.map((row: MembershipWithOrganisation) => ({
-    organisation: publicOrganisation(
-      {
-        id: row.organisation_id,
-        name: row.organisation_name,
-        type: row.organisation_type,
-        country: row.organisation_country,
-        description: row.organisation_description,
-        created_at: row.organisation_created_at,
-      },
-      counts.get(row.organisation_id) ?? 0,
+  const invitations = await listInvitationsForPerson(userId, profile.email);
+
+  return {
+    participation: rows.map((row: MembershipWithOrganisation) => ({
+      organisation: publicOrganisation(
+        {
+          id: row.organisation_id,
+          name: row.organisation_name,
+          type: row.organisation_type,
+          country: row.organisation_country,
+          description: row.organisation_description,
+          created_at: row.organisation_created_at,
+        },
+        counts.get(row.organisation_id) ?? 0,
+      ),
+      membership: publicMembership(row),
+    })),
+    invitations: invitations.map(publicInvitation),
+  };
+}
+
+/** Just the open invitations, for anywhere that only needs those. */
+export async function listMyInvitations(userId: number) {
+  const profile = await requireProfile(userId);
+
+  await expireDueInvitations();
+
+  return {
+    invitations: (await listInvitationsForPerson(userId, profile.email)).map(
+      publicInvitation,
     ),
-    membership: publicMembership(row),
-  }));
+  };
 }
 
 /* ------------------------------------------------------------------------
@@ -214,14 +331,18 @@ export type RegisterInput = {
   type?: unknown;
   country?: unknown;
   description?: unknown;
-  /** What this organisation calls its highest-ranking person. Free text. */
+  /** What this organisation calls the registrant. Free text, optional. */
+  title?: unknown;
+  /** Kept from the previous contract, read as `title` when it is the only one. */
   headTitle?: unknown;
+  participationType?: unknown;
 };
 
 /**
- * Registering an organisation and becoming its first person are one act. The
- * registrant is made an admin — a Yahzel access role — whose designation is
- * head. There is no owner, and the title they typed is theirs, not Yahzel's.
+ * Registering an organisation makes the registrant its **Admin** — a Yahzel
+ * access role — and nothing else. They are not made the Head: Head is a
+ * position inside the Administration class, and the organisation assigns it
+ * deliberately afterwards (see updateStanding).
  */
 export async function registerOrganisation(
   userId: number,
@@ -233,27 +354,37 @@ export async function registerOrganisation(
   const type = validateOrganisationType(input.type);
   const country = validateOrganisationCountry(input.country);
   const description = validateDescription(input.description);
-  const headTitle = validateTitle(input.headTitle, "headTitle");
+  const title = validateTitle(input.title ?? input.headTitle);
+  const participationType = validateParticipationType(input.participationType);
 
   const errors: FieldError[] = [
     name,
     type,
     country,
     description,
-    headTitle,
+    title,
+    participationType,
   ].flatMap((result) => (result.ok ? [] : result.errors));
 
-  if (!name.ok || !type.ok || !country.ok || !description.ok || !headTitle.ok) {
+  if (
+    !name.ok ||
+    !type.ok ||
+    !country.ok ||
+    !description.ok ||
+    !title.ok ||
+    !participationType.ok
+  ) {
     throw new OrganisationError(422, errors);
   }
 
-  const { organisation, membership } = await createOrganisationWithHead({
+  const { organisation, membership } = await createOrganisationWithAdmin({
     name: name.value,
     type: type.value,
     country: country.value,
     description: description.value,
     createdBy: userId,
-    headTitle: headTitle.value,
+    participationType: participationType.value,
+    title: title.value,
   });
 
   return {
@@ -284,132 +415,197 @@ export async function getOrganisation(userId: number, organisationId: number) {
   };
 }
 
+/**
+ * The people of an organisation, split the way the organisation itself is:
+ * its Administration, and everybody else.
+ */
 export async function getOrganisationPeople(
   userId: number,
   organisationId: number,
 ) {
   const { membership } = await requireMembership(userId, organisationId);
 
-  if (membership.status !== "active") {
+  if (membership.status === "concluded") {
     throw OrganisationError.field(
       403,
       "form",
-      "Accept your invitation to see who is here.",
+      "Your time in this organisation has concluded.",
     );
   }
 
-  return { members: (await listMembers(organisationId)).map(publicMember) };
+  const members = (await listMembers(organisationId)).map(publicMember);
+
+  return {
+    members,
+    administration: members.filter((member) => member.isAdministration),
+    people: members.filter((member) => !member.isAdministration),
+  };
 }
 
 /* ------------------------------------------------------------------------
-   People and invitations
+   Standing — class, position, title, participation, status
    --------------------------------------------------------------------- */
 
-export type InviteInput = {
-  email?: unknown;
-  title?: unknown;
+export type StandingInput = {
   systemRole?: unknown;
+  organisationClass?: unknown;
+  designation?: unknown;
+  participationType?: unknown;
+  title?: unknown;
+  status?: unknown;
 };
 
 /**
- * Membership is the organisation's decision, which is why it is asked for
- * here and never from a task or a piece of work. An address with no Yahzel
- * account yet is still a valid invitation: the row waits for whoever signs in
- * with it.
+ * How somebody is placed in the organisation. This is the one way a person
+ * becomes Head, joins the Administration, or has their relationship
+ * concluded — and each of those is a separate field, never a side effect of
+ * another.
  */
-export async function inviteToOrganisation(
+export async function updateStanding(
   userId: number,
   organisationId: number,
-  input: InviteInput,
+  memberId: number,
+  input: StandingInput,
 ) {
-  const { organisation, membership } = await requireMembership(
-    userId,
-    organisationId,
-  );
+  const { membership } = await requireMembership(userId, organisationId);
 
   requireAdmin(membership);
 
-  const email = validateEmail(input.email);
-  const title = validateTitle(input.title);
-  const systemRole = validateSystemRole(input.systemRole);
+  const target = await findMembershipById(organisationId, memberId);
 
-  const errors: FieldError[] = [email, title, systemRole].flatMap((result) =>
-    result.ok ? [] : result.errors,
-  );
-
-  if (!email.ok || !title.ok || !systemRole.ok) {
-    throw new OrganisationError(422, errors);
-  }
-
-  const invitee = await findUserByEmail(email.value);
-
-  if (invitee?.id === userId) {
+  if (!target) {
     throw OrganisationError.field(
-      422,
-      "email",
-      "You are already part of this organisation.",
+      404,
+      "form",
+      "That person could not be found.",
     );
   }
 
-  if (invitee) {
-    const existing = await findMembership(organisationId, invitee.id);
+  const systemRole =
+    input.systemRole === undefined
+      ? { ok: true as const, value: target.system_role }
+      : validateSystemRole(input.systemRole);
 
-    if (existing) {
+  const organisationClass =
+    input.organisationClass === undefined
+      ? { ok: true as const, value: target.organisation_class }
+      : validateOrganisationClass(input.organisationClass);
+
+  const designation =
+    input.designation === undefined
+      ? { ok: true as const, value: target.designation }
+      : validateDesignation(input.designation);
+
+  const participationType =
+    input.participationType === undefined
+      ? { ok: true as const, value: target.participation_type }
+      : validateParticipationType(input.participationType);
+
+  const title =
+    input.title === undefined
+      ? { ok: true as const, value: target.title }
+      : validateTitle(input.title);
+
+  const status =
+    input.status === undefined
+      ? { ok: true as const, value: target.status }
+      : validateMembershipStatus(input.status);
+
+  const errors: FieldError[] = [
+    systemRole,
+    organisationClass,
+    designation,
+    participationType,
+    title,
+    status,
+  ].flatMap((result) => (result.ok ? [] : result.errors));
+
+  if (
+    !systemRole.ok ||
+    !organisationClass.ok ||
+    !designation.ok ||
+    !participationType.ok ||
+    !title.ok ||
+    !status.ok
+  ) {
+    throw new OrganisationError(422, errors);
+  }
+
+  errors.push(
+    ...checkClassAndDesignation(organisationClass.value, designation.value),
+  );
+
+  if (errors.length > 0) {
+    throw new OrganisationError(422, errors);
+  }
+
+  // One organisation, one Head. Moving the position is deliberate; ending up
+  // with two by accident is not.
+  if (designation.value === "head" && target.designation !== "head") {
+    const heads = await countActiveWith(organisationId, {
+      designation: "head",
+    });
+
+    if (heads > 0) {
       throw OrganisationError.field(
         409,
-        "email",
-        existing.status === "active"
-          ? "That person is already part of this organisation."
-          : "That person has already been invited.",
+        "designation",
+        "This organisation already has a head. Change theirs first.",
       );
     }
   }
 
-  if (await findOpenInvitationByEmail(organisationId, email.value)) {
-    throw OrganisationError.field(
-      409,
-      "email",
-      "That address has already been invited.",
-    );
-  }
+  // An organisation must keep somebody who can administer it.
+  const losesAdmin =
+    target.system_role === "admin" &&
+    (systemRole.value !== "admin" || status.value !== "active");
 
-  try {
-    const row = await insertInvitation({
-      organisationId,
-      profileId: invitee?.id ?? null,
-      email: email.value,
-      systemRole: systemRole.value,
-      title: title.value,
-      invitedBy: userId,
+  if (losesAdmin) {
+    const admins = await countActiveWith(organisationId, {
+      system_role: "admin",
     });
 
-    return {
-      message: `${email.value} has been invited to ${organisation.name}.`,
-      member: publicMember({
-        ...row,
-        full_name: invitee?.full_name ?? null,
-        username: invitee?.username ?? null,
-        profile_email: invitee?.email ?? null,
-        profile_picture_url: invitee?.profile_picture_url ?? null,
-      }),
-    };
-  } catch (error) {
-    const conflict = describeUniqueViolation(error);
-
-    if (conflict) {
-      throw OrganisationError.field(409, conflict.field, conflict.message);
+    if (admins <= 1) {
+      throw OrganisationError.field(
+        409,
+        "systemRole",
+        "This organisation needs at least one administrator.",
+      );
     }
-
-    throw error;
   }
+
+  const timeline: Partial<OrganisationMemberRecord> = {};
+
+  if (status.value === "concluded" && target.status !== "concluded") {
+    timeline.left_at = new Date().toISOString();
+  }
+
+  // Reinstating clears the end date rather than inventing a new one.
+  if (status.value !== "concluded" && target.status === "concluded") {
+    timeline.left_at = null;
+  }
+
+  const updated = await updateMembership(target.id, {
+    system_role: systemRole.value,
+    organisation_class: organisationClass.value,
+    designation: designation.value,
+    participation_type: participationType.value,
+    title: title.value,
+    status: status.value,
+    ...timeline,
+  });
+
+  return {
+    message: "This person's standing has been updated.",
+    membership: publicMembership(updated),
+  };
 }
 
 /**
- * Removes a member, or withdraws an invitation nobody has answered. The head
- * cannot be removed: an organisation with no highest-ranking person is not a
- * state Yahzel should be able to reach by accident.
+ * Ends somebody's participation. The membership is never deleted — it is
+ * concluded, keeps its timeline, and stays in the person's history.
  */
-export async function removeFromOrganisation(
+export async function concludeMembership(
   userId: number,
   organisationId: number,
   memberId: number,
@@ -428,51 +624,314 @@ export async function removeFromOrganisation(
     );
   }
 
-  if (target.designation === "head") {
-    throw OrganisationError.field(
-      409,
-      "form",
-      "The head of the organisation cannot be removed.",
-    );
-  }
-
   if (target.id === membership.id) {
     throw OrganisationError.field(
       409,
       "form",
-      "You cannot remove yourself from the organisation.",
+      "You cannot conclude your own membership here.",
     );
   }
 
-  await deleteMembership(target.id);
+  if (target.status === "concluded") {
+    return {
+      message: "That membership has already concluded.",
+      membership: publicMembership(target),
+    };
+  }
+
+  if (target.system_role === "admin") {
+    const admins = await countActiveWith(organisationId, {
+      system_role: "admin",
+    });
+
+    if (admins <= 1) {
+      throw OrganisationError.field(
+        409,
+        "form",
+        "This organisation needs at least one administrator.",
+      );
+    }
+  }
+
+  const updated = await updateMembership(target.id, {
+    status: "concluded",
+    left_at: new Date().toISOString(),
+  });
 
   return {
-    message:
-      target.status === "active"
-        ? "The member was removed."
-        : "The invitation was withdrawn.",
+    message: "That membership has been concluded.",
+    membership: publicMembership(updated),
   };
 }
 
 /* ------------------------------------------------------------------------
-   Answering an invitation
+   Invitations
    --------------------------------------------------------------------- */
 
+export type InviteInput = {
+  /** A Yahzel username or an email address. */
+  person?: unknown;
+  /** Kept from the previous contract. */
+  email?: unknown;
+  title?: unknown;
+  systemRole?: unknown;
+  organisationClass?: unknown;
+  designation?: unknown;
+  participationType?: unknown;
+};
+
+function invitationExpiry(): string {
+  return new Date(
+    Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+}
+
 /**
- * The caller's unanswered invitation, whether it was addressed to their
- * profile or only to their email address.
+ * Membership is the organisation's decision, which is why it is asked for
+ * here and never from a task or a piece of work.
+ *
+ * A person may be named by Yahzel username or by email address, and the
+ * address does not have to belong to an account yet: the invitation is a row
+ * that waits, and registration attaches it to whoever claims that address.
  */
-async function requireOpenInvitation(
+export async function inviteToOrganisation(
   userId: number,
   organisationId: number,
-): Promise<OrganisationMemberRecord> {
+  input: InviteInput,
+) {
+  const { organisation, membership } = await requireMembership(
+    userId,
+    organisationId,
+  );
+
+  requireAdmin(membership);
+
+  const invitee = validateInvitee(input.person ?? input.email);
+  const title = validateTitle(input.title);
+  const systemRole = validateSystemRole(input.systemRole);
+  const organisationClass = validateOrganisationClass(input.organisationClass);
+  const designation = validateDesignation(input.designation);
+  const participationType = validateParticipationType(input.participationType);
+
+  const errors: FieldError[] = [
+    invitee,
+    title,
+    systemRole,
+    organisationClass,
+    designation,
+    participationType,
+  ].flatMap((result) => (result.ok ? [] : result.errors));
+
+  if (
+    !invitee.ok ||
+    !title.ok ||
+    !systemRole.ok ||
+    !organisationClass.ok ||
+    !designation.ok ||
+    !participationType.ok
+  ) {
+    throw new OrganisationError(422, errors);
+  }
+
+  errors.push(
+    ...checkClassAndDesignation(organisationClass.value, designation.value),
+  );
+
+  if (designation.value === "head") {
+    const heads = await countActiveWith(organisationId, {
+      designation: "head",
+    });
+
+    if (heads > 0) {
+      errors.push({
+        field: "designation",
+        message: "This organisation already has a head.",
+      });
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new OrganisationError(422, errors);
+  }
+
+  const person =
+    invitee.value.kind === "username"
+      ? await findUserByUsername(invitee.value.value)
+      : await findUserByEmail(invitee.value.value);
+
+  if (invitee.value.kind === "username" && !person) {
+    throw OrganisationError.field(
+      404,
+      "person",
+      "No Yahzel account uses that username. Invite them by email instead.",
+    );
+  }
+
+  const email = person?.email ?? invitee.value.value;
+
+  if (person?.id === userId) {
+    throw OrganisationError.field(
+      422,
+      "person",
+      "You are already part of this organisation.",
+    );
+  }
+
+  if (person) {
+    const existing = await findMembership(organisationId, person.id);
+
+    if (existing && existing.status !== "concluded") {
+      throw OrganisationError.field(
+        409,
+        "person",
+        "That person is already part of this organisation.",
+      );
+    }
+  }
+
+  if (
+    await findOpenInvitation(organisationId, {
+      profileId: person?.id ?? null,
+      email,
+    })
+  ) {
+    throw OrganisationError.field(
+      409,
+      "person",
+      "That person has already been invited.",
+    );
+  }
+
+  let row: OrganisationInvitationRecord;
+
+  try {
+    row = await insertInvitation({
+      organisationId,
+      profileId: person?.id ?? null,
+      email,
+      invitedBy: userId,
+      systemRole: systemRole.value,
+      participationType: participationType.value,
+      organisationClass: organisationClass.value,
+      designation: designation.value,
+      title: title.value,
+      expiresAt: invitationExpiry(),
+    });
+  } catch (error) {
+    const conflict = describeUniqueViolation(error);
+
+    if (conflict) {
+      throw OrganisationError.field(409, conflict.field, conflict.message);
+    }
+
+    throw error;
+  }
+
+  const inviter = await requireProfile(userId);
+
+  await sendInvitationEmail({
+    to: email,
+    organisationName: organisation.name,
+    inviterName: inviter.full_name,
+    inviterSystemRole: membership.system_role,
+    inviterTitle: membership.title,
+    title: title.value,
+    participationType: participationType.value,
+    organisationClass: organisationClass.value,
+    registered: Boolean(person),
+  });
+
+  const invitation = await findInvitationWithContext(row.id);
+
+  return {
+    message: person
+      ? `${person.full_name} has been invited to ${organisation.name}.`
+      : `An invitation has been sent to ${email}.`,
+    invitation: invitation ? publicInvitation(invitation) : null,
+  };
+}
+
+/** Everything this organisation has ever sent. Admins only. */
+export async function getOrganisationInvitations(
+  userId: number,
+  organisationId: number,
+) {
+  const { membership } = await requireMembership(userId, organisationId);
+
+  requireAdmin(membership);
+
+  await expireDueInvitations();
+
+  return {
+    invitations: (await listOrganisationInvitations(organisationId)).map(
+      publicInvitation,
+    ),
+  };
+}
+
+/** Withdraws an unanswered invitation. The row stays, marked cancelled. */
+export async function cancelInvitation(
+  userId: number,
+  organisationId: number,
+  invitationId: number,
+) {
+  const { membership } = await requireMembership(userId, organisationId);
+
+  requireAdmin(membership);
+
+  const invitation = await findInvitationById(invitationId);
+
+  if (!invitation || invitation.organisation_id !== organisationId) {
+    throw OrganisationError.field(
+      404,
+      "form",
+      "That invitation could not be found.",
+    );
+  }
+
+  if (invitation.status !== "pending") {
+    throw OrganisationError.field(
+      409,
+      "form",
+      "That invitation has already been answered.",
+    );
+  }
+
+  await updateInvitation(invitation.id, {
+    status: "cancelled",
+    responded_at: new Date().toISOString(),
+  });
+
+  return { message: "The invitation was withdrawn." };
+}
+
+/**
+ * The caller's own unanswered invitation, whether it was addressed to their
+ * profile or only to the email they later registered with.
+ */
+async function requireOpenInvitationFor(
+  userId: number,
+  match: { invitationId?: number; organisationId?: number },
+): Promise<OrganisationInvitationRecord> {
   const profile = await requireProfile(userId);
 
-  const invitation =
-    (await findMembership(organisationId, userId)) ??
-    (await findOpenInvitationByEmail(organisationId, profile.email));
+  await expireDueInvitations();
 
-  if (!invitation || invitation.status !== "invited") {
+  const invitation = match.invitationId
+    ? await findInvitationById(match.invitationId)
+    : match.organisationId
+      ? await findOpenInvitation(match.organisationId, {
+          profileId: userId,
+          email: profile.email,
+        })
+      : undefined;
+
+  const isMine =
+    invitation &&
+    (invitation.profile_id === userId ||
+      invitation.email.toLowerCase() === profile.email.toLowerCase());
+
+  if (!invitation || !isMine || invitation.status !== "pending") {
     throw OrganisationError.field(
       404,
       "form",
@@ -483,13 +942,47 @@ async function requireOpenInvitation(
   return invitation;
 }
 
-export async function acceptInvitation(userId: number, organisationId: number) {
-  const invitation = await requireOpenInvitation(userId, organisationId);
+/**
+ * Accepting is the moment a membership begins — never before. The person
+ * joins as exactly what they were offered, and the invitation is kept as the
+ * record of how they came to be here.
+ */
+export async function acceptInvitation(
+  userId: number,
+  match: { invitationId?: number; organisationId?: number },
+) {
+  const invitation = await requireOpenInvitationFor(userId, match);
 
-  const membership = await updateMembership(invitation.id, {
+  const existing = await findMembership(invitation.organisation_id, userId);
+
+  const membership = existing
+    ? await updateMembership(existing.id, {
+        // Somebody returning to an organisation resumes on the new terms.
+        system_role: invitation.system_role,
+        participation_type: invitation.participation_type,
+        organisation_class: invitation.organisation_class,
+        designation: invitation.designation,
+        title: invitation.title,
+        status: "active",
+        joined_at: new Date().toISOString(),
+        left_at: null,
+      })
+    : await insertMembership({
+        organisationId: invitation.organisation_id,
+        profileId: userId,
+        email: invitation.email,
+        systemRole: invitation.system_role,
+        participationType: invitation.participation_type,
+        organisationClass: invitation.organisation_class,
+        designation: invitation.designation,
+        title: invitation.title,
+        invitedBy: invitation.invited_by,
+      });
+
+  await updateInvitation(invitation.id, {
     profile_id: userId,
-    status: "active",
-    joined_at: new Date().toISOString(),
+    status: "accepted",
+    responded_at: new Date().toISOString(),
   });
 
   return {
@@ -500,11 +993,35 @@ export async function acceptInvitation(userId: number, organisationId: number) {
 
 export async function declineInvitation(
   userId: number,
-  organisationId: number,
+  match: { invitationId?: number; organisationId?: number },
 ) {
-  const invitation = await requireOpenInvitation(userId, organisationId);
+  const invitation = await requireOpenInvitationFor(userId, match);
 
-  await deleteMembership(invitation.id);
+  await updateInvitation(invitation.id, {
+    profile_id: userId,
+    status: "declined",
+    responded_at: new Date().toISOString(),
+  });
 
   return { message: "The invitation was declined." };
+}
+
+/**
+ * Called once, when somebody registers: any invitation addressed to the email
+ * they signed up with becomes theirs to answer.
+ *
+ * It is deliberately not accepted for them — registering is not consent to
+ * join an organisation.
+ */
+export async function linkInvitationsToNewProfile(
+  profileId: number,
+  email: string,
+): Promise<number> {
+  try {
+    return await linkInvitationsToProfile(profileId, email);
+  } catch (error) {
+    // Registration must never fail because of this.
+    console.error("Failed to link invitations to a new profile:", error);
+    return 0;
+  }
 }

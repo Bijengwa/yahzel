@@ -25,10 +25,27 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
     }
 
+    // Growing past the lg breakpoint brings the permanent rail back; the
+    // drawer must not stay open behind it.
+    const desktop = window.matchMedia("(min-width: 1024px)");
+
+    function onBreakpoint(event: MediaQueryListEvent) {
+      if (event.matches) {
+        setDrawerOpen(false);
+      }
+    }
+
     document.addEventListener("keydown", onKeyDown);
+    desktop.addEventListener("change", onBreakpoint);
+
+    // The page behind a drawer should not scroll with it.
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      desktop.removeEventListener("change", onBreakpoint);
+      document.body.style.overflow = overflow;
     };
   }, [drawerOpen]);
 
@@ -89,8 +106,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2 lg:hidden">
             <button
               type="button"
-              onClick={() => setDrawerOpen(true)}
-              aria-label="Open menu"
+              onClick={() => setDrawerOpen((open) => !open)}
+              aria-label={drawerOpen ? "Close menu" : "Open menu"}
               aria-expanded={drawerOpen}
               className="flex h-8 w-8 items-center justify-center rounded-sm text-yz-ink"
             >
@@ -145,6 +162,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
+      {/* The drawer is mounted only while it is open: closed, there is no
+          overlay left on the page to swallow taps, and the content has the
+          whole viewport to itself. */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button
@@ -154,8 +174,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="absolute inset-0 h-full w-full bg-black/40"
           />
 
-          <div className="absolute inset-y-0 left-0 w-[220px] max-w-[85vw] shadow-[0_0_60px_-10px_rgba(0,0,0,0.45)]">
+          <div className="absolute inset-y-0 left-0 w-[240px] max-w-[85vw] shadow-[0_0_60px_-10px_rgba(0,0,0,0.45)]">
             <Sidebar
+              variant="drawer"
               onNavigate={() => setDrawerOpen(false)}
             />
           </div>

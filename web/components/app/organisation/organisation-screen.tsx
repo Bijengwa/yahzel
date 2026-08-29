@@ -12,24 +12,26 @@ import {
 import { ApiError } from "@/lib/api";
 import { formatJoinedDate } from "@/lib/format";
 import {
-  describeStanding,
+  describePlacement,
+  describeTimeline,
   fetchOrganisation,
   type Membership,
   type Organisation,
 } from "@/lib/organisation";
 import { ReadRow } from "../profile/profile-section";
+import { MembershipStatusPill } from "./organisation-card";
 import { PeoplePanel } from "./people-panel";
 import { StandingPills } from "./standing-pills";
 
 /**
- * One organisation, and its administration.
- *
- * Version 1 shows what the organisation is, where the reader stands in it,
- * and who else is here. The Administration area that follows — directors,
- * managers, HR, finance — grows out of the People group below rather than
- * replacing this screen.
+ * One organisation: what it is, where the reader stands in it, and who else
+ * is here — its Administration first, then everybody else.
  */
-export function OrganisationScreen({ organisationId }: { organisationId: number }) {
+export function OrganisationScreen({
+  organisationId,
+}: {
+  organisationId: number;
+}) {
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,12 +76,10 @@ export function OrganisationScreen({ organisationId }: { organisationId: number 
   }
 
   if (!organisation || !membership) {
-    return (
-      <p className="text-[13px] text-yz-neutral-600">Loading…</p>
-    );
+    return <p className="text-[13px] text-yz-neutral-600">Loading…</p>;
   }
 
-  const invited = membership.status === "invited";
+  const concluded = membership.status === "concluded";
 
   return (
     <div className="space-y-3">
@@ -104,19 +104,6 @@ export function OrganisationScreen({ organisationId }: { organisationId: number 
         }
       />
 
-      {invited && (
-        <StatusMessage tone="ok">
-          You have been invited to this organisation. Accept or decline it from{" "}
-          <Link
-            href="/organisation"
-            className="font-bold underline underline-offset-4"
-          >
-            my participation
-          </Link>
-          .
-        </StatusMessage>
-      )}
-
       <Panel>
         <PanelGroup title="Overview">
           {organisation.description && (
@@ -137,34 +124,35 @@ export function OrganisationScreen({ organisationId }: { organisationId: number 
           </dl>
         </PanelGroup>
 
-        <PanelGroup title="Administration">
+        <PanelGroup title="You, here">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-yz-ink">
-                {describeStanding(membership)}
+                {describePlacement(membership)}
               </p>
 
               <p className="mt-0.5 text-[12px] leading-5 text-yz-neutral-600">
-                {membership.isAdmin
-                  ? "Admin is a Yahzel access role: you can invite people and remove them."
-                  : "You take part in this organisation. An admin manages who belongs to it."}
+                {membership.participationLabel} · {describeTimeline(membership)}
               </p>
             </div>
 
-            <StandingPills membership={membership} />
+            <span className="flex items-center gap-2">
+              <StandingPills membership={membership} />
+              <MembershipStatusPill status={membership.status} />
+            </span>
           </div>
 
           <p className="mt-3 border-t border-yz-neutral-200 pt-3 text-[12px] leading-5 text-yz-neutral-600">
-            Head is the organisation&rsquo;s highest-ranking position. The title
-            that position carries — CEO, Founder, President, Director General —
-            belongs to the organisation, not to Yahzel.
+            {membership.isAdmin
+              ? "Admin is a Yahzel access role: you can invite people and set where they sit. It is not a position in the organisation — Administration and Head are, and they are assigned separately."
+              : "Administration is the organisation's leadership class, and Head is the highest position in it. Admin is a separate Yahzel access role."}
           </p>
         </PanelGroup>
 
-        {!invited && (
+        {!concluded && (
           <PeoplePanel
             organisationId={organisation.id}
-            canAdminister={membership.isAdmin}
+            canAdminister={membership.isAdmin && membership.status === "active"}
             currentMemberId={membership.id}
           />
         )}

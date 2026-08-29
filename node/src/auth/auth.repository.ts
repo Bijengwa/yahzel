@@ -95,3 +95,7 @@ export async function markEmailAsVerified(userId: number): Promise<void> {
       updated_at: db.fn.now(),
     });
 }
+/** Invitations may name a person by handle rather than by address. */
+export function findUserByUsername(username: string) {
+  return db<ProfileRecord>(TABLE).where({ username }).first();
+}

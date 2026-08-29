@@ -3,52 +3,37 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import {
   PageHeader,
   Panel,
   PanelGroup,
-  PanelRow,
   StatusMessage,
 } from "@/components/ui/panel";
 import { ApiError } from "@/lib/api";
 import {
-  acceptInvitation,
-  declineInvitation,
-  describeStanding,
   fetchParticipation,
+  type Invitation,
   type Participation,
 } from "@/lib/organisation";
-import { StandingPills } from "./standing-pills";
+import { InvitationList } from "./invitation-list";
+import { OrganisationCard } from "./organisation-card";
 
 type Status = { tone: "ok" | "error"; message: string } | null;
-
-/** "Company · Tanzania · 4 people" — the facts, in one quiet line. */
-function summarise({ organisation }: Participation): string {
-  return [
-    organisation.typeLabel,
-    organisation.countryName,
-    `${organisation.memberCount} ${
-      organisation.memberCount === 1 ? "person" : "people"
-    }`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
 
 export function ParticipationScreen() {
   const [participation, setParticipation] = useState<Participation[] | null>(
     null,
   );
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>(null);
-  const [answering, setAnswering] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const { participation: next } = await fetchParticipation();
+      const next = await fetchParticipation();
 
-      setParticipation(next);
+      setParticipation(next.participation);
+      setInvitations(next.invitations);
       setError(null);
     } catch (caught) {
       setError(
@@ -66,36 +51,13 @@ export function ParticipationScreen() {
     void load();
   }, [load]);
 
-  async function answer(id: number, accept: boolean) {
-    setAnswering(id);
-    setStatus(null);
-
-    try {
-      const { message } = accept
-        ? await acceptInvitation(id)
-        : await declineInvitation(id);
-
-      setStatus({ tone: "ok", message });
-      await load();
-    } catch (caught) {
-      setStatus({
-        tone: "error",
-        message:
-          caught instanceof ApiError
-            ? caught.message
-            : "Something went wrong. Please try again.",
-      });
-    } finally {
-      setAnswering(null);
-    }
-  }
-
-  const invitations =
-    participation?.filter((entry) => entry.membership.status === "invited") ??
+  const current =
+    participation?.filter((entry) => entry.membership.status !== "concluded") ??
     [];
 
-  const active =
-    participation?.filter((entry) => entry.membership.status === "active") ?? [];
+  const past =
+    participation?.filter((entry) => entry.membership.status === "concluded") ??
+    [];
 
   return (
     <div className="space-y-3">
@@ -105,14 +67,16 @@ export function ParticipationScreen() {
         actions={
           <Link
             href="/organisation/new"
-            className="inline-flex items-center rounded-sm border border-yz-ink bg-yz-ink px-4 py-2 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
+            className="inline-flex items-center rounded-sm border border-yz-ink bg-yz-ink px-4 py-2 text-[13px] font-bold text-yz-ink-contrast transition-opacity duration-150 hover:opacity-90"
           >
             Register organisation
           </Link>
         }
       />
 
-      {status && <StatusMessage tone={status.tone}>{status.message}</StatusMessage>}
+      {status && (
+        <StatusMessage tone={status.tone}>{status.message}</StatusMessage>
+      )}
 
       {error && (
         <StatusMessage tone="error">
@@ -130,86 +94,49 @@ export function ParticipationScreen() {
       <Panel>
         {invitations.length > 0 && (
           <PanelGroup title="Invitations">
-            <ul className="space-y-3">
-              {invitations.map((entry) => (
-                <li key={entry.organisation.id}>
-                  <PanelRow
-                    label={entry.organisation.name}
-                    description={
-                      <>
-                        {summarise(entry)}
-                        {entry.membership.title
-                          ? ` · invited as ${entry.membership.title}`
-                          : ""}
-                      </>
-                    }
-                    trailing={
-                      <span className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={answering === entry.organisation.id}
-                          onClick={() =>
-                            void answer(entry.organisation.id, false)
-                          }
-                        >
-                          Decline
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          disabled={answering === entry.organisation.id}
-                          onClick={() =>
-                            void answer(entry.organisation.id, true)
-                          }
-                        >
-                          {answering === entry.organisation.id
-                            ? "Working…"
-                            : "Accept"}
-                        </Button>
-                      </span>
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
+            <InvitationList
+              invitations={invitations}
+              onAnswered={(message) => {
+                setStatus({ tone: "ok", message });
+                void load();
+              }}
+            />
           </PanelGroup>
         )}
 
         <PanelGroup title="My participation">
           {participation === null && !error ? (
             <p className="text-[13px] text-yz-neutral-600">Loading…</p>
-          ) : active.length === 0 ? (
+          ) : current.length === 0 ? (
             <p className="text-[13px] leading-6 text-yz-neutral-600">
               You do not take part in any organisation yet. Register one, or
               wait to be invited to an existing one.
             </p>
           ) : (
             <ul className="divide-y divide-yz-neutral-200">
-              {active.map((entry) => (
-                <li key={entry.organisation.id} className="first:pt-0 last:pb-0">
-                  <Link
+              {current.map((entry) => (
+                <li key={entry.membership.id}>
+                  <OrganisationCard
+                    entry={entry}
                     href={`/organisation/${entry.organisation.id}`}
-                    className="-mx-2 flex flex-wrap items-center justify-between gap-3 rounded-sm px-2 py-2.5 transition-colors duration-150 hover:bg-yz-neutral-100"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-semibold text-yz-ink">
-                        {entry.organisation.name}
-                      </span>
-
-                      <span className="mt-0.5 block truncate text-[12px] text-yz-neutral-600">
-                        {summarise(entry)} · {describeStanding(entry.membership)}
-                      </span>
-                    </span>
-
-                    <StandingPills membership={entry.membership} />
-                  </Link>
+                  />
                 </li>
               ))}
             </ul>
           )}
         </PanelGroup>
+
+        {past.length > 0 && (
+          <PanelGroup title="Previously">
+            <ul className="divide-y divide-yz-neutral-200">
+              {past.map((entry) => (
+                <li key={entry.membership.id}>
+                  <OrganisationCard entry={entry} />
+                </li>
+              ))}
+            </ul>
+          </PanelGroup>
+        )}
       </Panel>
     </div>
   );

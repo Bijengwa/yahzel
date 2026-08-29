@@ -43,7 +43,7 @@ const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.str
   MEDIA_QUERY,
 )}).matches;var el=document.getElementById(${JSON.stringify(
   WRAPPER_ID,
-)});if(el){el.classList.toggle("dark",dark);}}catch(e){}})();`;
+)});if(el){el.classList.toggle("dark",dark);}document.documentElement.classList.toggle("dark",dark);}catch(e){}})();`;
 
 function readStoredTheme(): Theme {
   if (typeof window === "undefined") {
@@ -88,15 +88,24 @@ function readInitialResolvedTheme(): ResolvedTheme {
 }
 
 /**
- * Scoped to the authenticated app only (mounted in `(app)/layout.tsx`), not
- * the root layout — the pre-authentication screens keep their fixed light
- * styling and never receive the `.dark` class or its token overrides.
+ * Mounted once in the root layout, so every screen — the authenticated app
+ * *and* the sign-in, registration and verification pages — reads one
+ * preference. The default is "system": Yahzel follows the operating system
+ * until somebody chooses otherwise, and their choice persists in
+ * localStorage under the key above.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(readStoredTheme);
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(
     readInitialResolvedTheme,
   );
+
+  // The page ground is painted by <body>, which sits outside the wrapper
+  // below, so the root element carries the class too — otherwise the area
+  // revealed by overscroll keeps the other theme's colour.
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
+  }, [resolvedTheme]);
 
   // Follow OS changes live while the preference is "system".
   useEffect(() => {
@@ -138,7 +147,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     >
       <div
         id={WRAPPER_ID}
-        className={resolvedTheme === "dark" ? "dark" : ""}
+        className={`flex min-h-screen flex-1 flex-col ${
+          resolvedTheme === "dark" ? "dark" : ""
+        }`}
         suppressHydrationWarning
       >
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
@@ -233,5 +244,79 @@ export function ThemeToggleButton() {
     >
       {isDark ? <SunIcon /> : <MoonIcon />}
     </button>
+  );
+}
+
+/**
+ * The three-way appearance control: System, Light, Dark. Settings and the
+ * authentication pages both render this one component rather than keeping
+ * two versions of the same switch.
+ */
+export const THEME_OPTIONS: {
+  value: Theme;
+  label: string;
+  icon: typeof SunIcon;
+}[] = [
+  { value: "system", label: "System", icon: SystemIcon },
+  { value: "light", label: "Light", icon: SunIcon },
+  { value: "dark", label: "Dark", icon: MoonIcon },
+];
+
+export function ThemeSwitch({
+  compact = false,
+  className = "",
+}: {
+  /** Icons only — for the tight header of an authentication page. */
+  compact?: boolean;
+  className?: string;
+}) {
+  const { theme, setTheme } = useTheme();
+
+  // The server cannot know the stored preference, so it always renders the
+  // default. Marking the selection only after mount keeps the first client
+  // render identical to the server's and avoids a hydration mismatch; the
+  // effect below then shows the real choice.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  const selected = mounted ? theme : "system";
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Theme"
+      className={`inline-flex rounded-sm border border-yz-neutral-300 p-0.5 ${className}`}
+    >
+      {THEME_OPTIONS.map((option) => {
+        const active = selected === option.value;
+        const Icon = option.icon;
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={compact ? option.label : undefined}
+            title={compact ? option.label : undefined}
+            onClick={() => setTheme(option.value)}
+            className={`flex items-center gap-1.5 rounded-sm text-[12px] font-semibold transition-colors duration-150 ${
+              compact ? "px-2 py-1.5" : "px-2.5 py-1.5"
+            } ${
+              active
+                ? "bg-yz-neutral-200 text-yz-ink"
+                : "text-yz-neutral-600 hover:text-yz-ink"
+            }`}
+          >
+            <Icon width={14} height={14} />
+            {!compact && <span>{option.label}</span>}
+          </button>
+        );
+      })}
+    </div>
   );
 }

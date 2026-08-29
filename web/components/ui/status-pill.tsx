@@ -1,8 +1,9 @@
-type Tone = "ok" | "warn" | "muted";
+type Tone = "ok" | "warn" | "danger" | "muted";
 
 const TONES: Record<Tone, string> = {
   ok: "bg-yz-ok-bg text-yz-ok-ink border-yz-ok-line",
   warn: "bg-yz-warn-bg text-yz-warn-ink border-yz-warn-line",
+  danger: "bg-yz-danger-bg text-yz-danger-ink border-yz-danger-line",
   muted: "bg-yz-neutral-100 text-yz-neutral-600 border-yz-neutral-300",
 };
 

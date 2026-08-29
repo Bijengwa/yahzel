@@ -61,12 +61,17 @@ async function makeUser(fullName: string, email: string) {
     json("POST", null, { userId: id, otp: row.verification_otp }),
   );
 
-  return { id, email, token: verified.body.token as string };
+  return {
+    id,
+    email,
+    username: reg.body.user.username as string,
+    token: verified.body.token as string,
+  };
 }
 
 const stamp = Date.now();
 
-const head = await makeUser("Head Person", `head${stamp}@example.com`);
+const founder = await makeUser("Founder Person", `founder${stamp}@example.com`);
 const invitee = await makeUser("Invited Person", `invitee${stamp}@example.com`);
 const strangerEmail = `stranger${stamp}@example.com`;
 
@@ -79,7 +84,7 @@ check("unauthenticated list is refused", r.status === 401, r.status);
 
 r = await call(
   "/api/organisations",
-  json("POST", head.token, { name: "", type: "company" }),
+  json("POST", founder.token, { name: "", type: "company" }),
 );
 check(
   "empty name is rejected on the name field",
@@ -89,7 +94,7 @@ check(
 
 r = await call(
   "/api/organisations",
-  json("POST", head.token, { name: "Kilimanjaro Works", type: "kingdom" }),
+  json("POST", founder.token, { name: "Kilimanjaro Works", type: "kingdom" }),
 );
 check("unknown type is rejected", r.status === 422, r.body);
 
@@ -97,12 +102,13 @@ check("unknown type is rejected", r.status === 422, r.body);
 
 r = await call(
   "/api/organisations",
-  json("POST", head.token, {
+  json("POST", founder.token, {
     name: `Kilimanjaro Works ${stamp}`,
     type: "company",
     country: "TZ",
     description: "Builds things.",
-    headTitle: "Founder & CEO",
+    title: "Founder & CEO",
+    participationType: "employee",
   }),
 );
 
@@ -115,16 +121,28 @@ check(
 );
 
 check(
-  "registrant is an admin whose designation is head",
+  "the registrant is an admin — a Yahzel access role",
   r.body.membership?.systemRole === "admin" &&
-    r.body.membership?.designation === "head" &&
     r.body.membership?.status === "active",
+  r.body.membership,
+);
+
+check(
+  "the registrant is NOT made the head, and is not put in Administration",
+  r.body.membership?.isHead === false &&
+    r.body.membership?.isAdministration === false,
   r.body.membership,
 );
 
 check(
   "the organisation's own title is kept verbatim",
   r.body.membership?.title === "Founder & CEO",
+  r.body.membership,
+);
+
+check(
+  "the membership timeline starts, and has no invented end",
+  !!r.body.membership?.joinedAt && r.body.membership?.leftAt === null,
   r.body.membership,
 );
 
@@ -136,9 +154,9 @@ check(
 
 /* -------------------------------------------------------- participation */
 
-r = await call("/api/organisations", json("GET", head.token));
+r = await call("/api/organisations", json("GET", founder.token));
 check(
-  "the head sees the organisation in my participation",
+  "the registrant sees the organisation in my participation",
   r.body.participation?.length === 1 &&
     r.body.participation[0].organisation.id === organisationId &&
     r.body.participation[0].organisation.typeLabel === "Company" &&
@@ -156,28 +174,70 @@ check(
   r.status,
 );
 
+/* ------------------------------------------- Administration is not Admin */
+
+const founderMembership = (await db("organisation_members")
+  .where({ organisation_id: organisationId, profile_id: founder.id })
+  .first()) as { id: number };
+
+r = await call(
+  `/api/organisations/${organisationId}/members/${founderMembership.id}`,
+  json("PATCH", founder.token, {
+    organisationClass: "member",
+    designation: "head",
+  }),
+);
+check(
+  "head cannot be held outside the Administration class",
+  r.status === 422 && r.body.errors?.[0]?.field === "designation",
+  r.body,
+);
+
+r = await call(
+  `/api/organisations/${organisationId}/members/${founderMembership.id}`,
+  json("PATCH", founder.token, {
+    organisationClass: "administration",
+    designation: "head",
+  }),
+);
+check(
+  "head is assigned deliberately, afterwards",
+  r.status === 200 &&
+    r.body.membership?.isHead === true &&
+    r.body.membership?.isAdministration === true,
+  r.body,
+);
+
 /* ------------------------------------------------------------ invitation */
 
 r = await call(
-  `/api/organisations/${organisationId}/members`,
-  json("POST", head.token, {
-    email: invitee.email,
+  `/api/organisations/${organisationId}/invitations`,
+  json("POST", founder.token, {
+    person: invitee.username,
     title: "Operations Manager",
-    systemRole: "member",
+    participationType: "contractor",
   }),
 );
-check("an existing person can be invited", r.status === 201, r.body);
+check("a person can be invited by username", r.status === 201, r.body);
+
+const invitationId = r.body.invitation?.id as number;
 
 check(
   "an invitation carries the organisation's title, not a Yahzel one",
-  r.body.member?.title === "Operations Manager" &&
-    r.body.member?.designation === "member",
-  r.body.member,
+  r.body.invitation?.title === "Operations Manager" &&
+    r.body.invitation?.participationType === "contractor",
+  r.body.invitation,
+);
+
+check(
+  "the invitation says who is asking, and names Admin as an access role",
+  r.body.invitation?.invitedBy?.systemRole === "admin",
+  r.body.invitation?.invitedBy,
 );
 
 r = await call(
-  `/api/organisations/${organisationId}/members`,
-  json("POST", head.token, { email: invitee.email }),
+  `/api/organisations/${organisationId}/invitations`,
+  json("POST", founder.token, { person: invitee.email }),
 );
 check("the same person cannot be invited twice", r.status === 409, r.body);
 
@@ -185,98 +245,138 @@ r = await call(
   `/api/organisations/${organisationId}/members`,
   json("GET", invitee.token),
 );
-check(
-  "an invited person cannot read the people list yet",
-  r.status === 403,
-  r.status,
-);
+check("an invited person is not a member yet", r.status === 404, r.status);
 
-r = await call("/api/organisations", json("GET", invitee.token));
+r = await call("/api/organisations/invitations", json("GET", invitee.token));
 check(
-  "the invitation shows up in the invited person's participation",
-  r.body.participation?.[0]?.membership?.status === "invited",
-  r.body.participation,
+  "the invitation is waiting for the invited person",
+  r.body.invitations?.[0]?.id === invitationId,
+  r.body.invitations,
 );
 
 r = await call(
-  `/api/organisations/${organisationId}/membership/accept`,
+  `/api/organisations/invitations/${invitationId}/accept`,
   json("POST", invitee.token),
 );
 check(
-  "the invitation can be accepted",
-  r.status === 200 && r.body.membership?.status === "active",
+  "accepting is what creates the membership",
+  r.status === 200 &&
+    r.body.membership?.status === "active" &&
+    r.body.membership?.title === "Operations Manager",
   r.body,
 );
 
 r = await call(
   `/api/organisations/${organisationId}/members`,
-  json("GET", head.token),
+  json("GET", founder.token),
 );
 check(
-  "the people list shows the head first, then the member",
-  r.body.members?.length === 2 &&
-    r.body.members[0].designation === "head" &&
-    r.body.members[1].status === "active",
-  r.body.members,
+  "people are grouped into Administration and everybody else",
+  r.body.administration?.length === 1 &&
+    r.body.administration[0].isHead === true &&
+    r.body.people?.length === 1,
+  { administration: r.body.administration, people: r.body.people },
 );
 
 /* -------------------------------------------------------- administration */
 
 r = await call(
-  `/api/organisations/${organisationId}/members`,
-  json("POST", invitee.token, { email: strangerEmail }),
+  `/api/organisations/${organisationId}/invitations`,
+  json("POST", invitee.token, { person: strangerEmail }),
 );
 check("a plain member cannot invite", r.status === 403, r.status);
-
-const headMember = (await db("organisation_members")
-  .where({ organisation_id: organisationId, designation: "head" })
-  .first()) as { id: number };
-
-r = await call(
-  `/api/organisations/${organisationId}/members/${headMember.id}`,
-  json("DELETE", head.token),
-);
-check("the head cannot be removed", r.status === 409, r.body);
 
 /* ------------------------------- inviting somebody who has no account yet */
 
 r = await call(
-  `/api/organisations/${organisationId}/members`,
-  json("POST", head.token, { email: strangerEmail }),
+  `/api/organisations/${organisationId}/invitations`,
+  json("POST", founder.token, {
+    person: strangerEmail,
+    participationType: "volunteer",
+    title: "Community Volunteer",
+  }),
 );
 check(
   "an address with no Yahzel account can still be invited",
-  r.status === 201 && r.body.member?.profileId === null,
-  r.body.member,
+  r.status === 201 && r.body.invitation?.profileId === null,
+  r.body.invitation,
 );
+
+const strangerInvitationId = r.body.invitation?.id as number;
 
 const stranger = await makeUser("Stranger Person", strangerEmail);
 
+r = await call("/api/organisations/invitations", json("GET", stranger.token));
+check(
+  "registering attaches the waiting invitation without accepting it",
+  r.body.invitations?.[0]?.id === strangerInvitationId &&
+    r.body.invitations?.[0]?.status === "pending",
+  r.body.invitations,
+);
+
 r = await call("/api/organisations", json("GET", stranger.token));
 check(
-  "the waiting invitation finds them once they join Yahzel",
-  r.body.participation?.[0]?.membership?.status === "invited",
+  "an unanswered invitation is not a membership",
+  r.body.participation?.length === 0,
   r.body.participation,
 );
 
 r = await call(
-  `/api/organisations/${organisationId}/membership/decline`,
+  `/api/organisations/invitations/${strangerInvitationId}/decline`,
   json("POST", stranger.token),
 );
 check("an invitation can be declined", r.status === 200, r.body);
 
-r = await call("/api/organisations", json("GET", stranger.token));
+r = await call("/api/organisations/invitations", json("GET", stranger.token));
 check(
-  "a declined invitation disappears",
-  r.body.participation?.length === 0,
+  "a declined invitation stops waiting, but is not deleted",
+  r.body.invitations?.length === 0,
+  r.body.invitations,
+);
+
+check(
+  "the declined invitation is kept as history",
+  (
+    (await db("organisation_invitations")
+      .where({ id: strangerInvitationId })
+      .first()) as { status: string }
+  )?.status === "declined",
+  strangerInvitationId,
+);
+
+/* ------------------------------------------- concluding, never deleting */
+
+const inviteeMembership = (await db("organisation_members")
+  .where({ organisation_id: organisationId, profile_id: invitee.id })
+  .first()) as { id: number };
+
+r = await call(
+  `/api/organisations/${organisationId}/members/${inviteeMembership.id}`,
+  json("DELETE", founder.token),
+);
+check(
+  "ending a membership concludes it and closes its timeline",
+  r.status === 200 &&
+    r.body.membership?.status === "concluded" &&
+    !!r.body.membership?.leftAt,
+  r.body,
+);
+
+r = await call("/api/organisations", json("GET", invitee.token));
+check(
+  "a concluded membership stays in the person's history",
+  r.body.participation?.[0]?.membership?.status === "concluded",
   r.body.participation,
 );
 
 /* ------------------------------------------------------------- teardown */
 
-// Organisations first: organisations.created_by is ON DELETE RESTRICT.
+// Organisations first: organisations.created_by is ON DELETE RESTRICT, and
+// invitations and memberships cascade from the organisation.
 await db("organisations").where({ id: organisationId }).delete();
-await db("profiles").whereIn("id", [head.id, invitee.id, stranger.id]).delete();
+await db("profiles")
+  .whereIn("id", [founder.id, invitee.id, stranger.id])
+  .delete();
 
 console.log(
   failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} CHECK(S) FAILED`,
