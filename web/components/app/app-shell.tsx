@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { YahzelIcon } from "@/components/yahzel-icon";
 import { ThemeToggleButton } from "@/components/theme/theme-provider";
+import { NotificationBell } from "./notifications/notification-bell";
 import { Avatar } from "./profile/avatar";
 import { CompletionBanner } from "./profile/completion-banner";
 import { Sidebar } from "./sidebar";
@@ -141,6 +142,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            <NotificationBell />
+
             <ThemeToggleButton />
 
             <span className="lg:hidden">

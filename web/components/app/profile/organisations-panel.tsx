@@ -74,10 +74,7 @@ export function OrganisationsPanel() {
           <ul className="divide-y divide-yz-neutral-200">
             {current.map((entry) => (
               <li key={entry.membership.id}>
-                <OrganisationCard
-                  entry={entry}
-                  href={`/organisation/${entry.organisation.id}`}
-                />
+                <OrganisationCard entry={entry} />
               </li>
             ))}
           </ul>

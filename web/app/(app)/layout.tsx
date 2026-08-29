@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app/app-shell";
+import { NotificationsProvider } from "@/components/app/notifications/notifications-provider";
 import { ProfileProvider } from "@/components/app/profile/profile-provider";
 
 /**
@@ -16,7 +17,9 @@ export default function AuthenticatedLayout({
 }) {
   return (
     <ProfileProvider>
-      <AppShell>{children}</AppShell>
+      <NotificationsProvider>
+        <AppShell>{children}</AppShell>
+      </NotificationsProvider>
     </ProfileProvider>
   );
 }
