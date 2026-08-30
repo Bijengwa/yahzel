@@ -26,8 +26,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
     }
 
-    // Growing past the lg breakpoint brings the permanent rail back; the
-    // drawer must not stay open behind it.
     const desktop = window.matchMedia("(min-width: 1024px)");
 
     function onBreakpoint(event: MediaQueryListEvent) {
@@ -39,7 +37,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     document.addEventListener("keydown", onKeyDown);
     desktop.addEventListener("change", onBreakpoint);
 
-    // The page behind a drawer should not scroll with it.
     const { overflow } = document.body.style;
     document.body.style.overflow = "hidden";
 
@@ -66,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (error || !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-yz-bg px-6">
-        <div className="w-full max-w-sm rounded-md border border-yz-neutral-300 bg-yz-panel p-7 text-center">
+        <div className="w-full max-w-sm rounded-xl border border-yz-neutral-300 bg-yz-panel p-7 text-center">
           <YahzelIcon
             size={28}
             className="mx-auto text-yz-ink"
@@ -84,7 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => void refresh()}
-            className="mt-5 w-full rounded-sm bg-yz-ink px-4 py-2.5 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
+            className="mt-5 w-full rounded-lg bg-yz-ink px-4 py-2.5 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
           >
             Try again
           </button>
@@ -95,22 +92,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-yz-bg">
-      {/* Sidebar owns the full viewport height and its own brand header —
-          the content pane's thin bar sits beside it, not above it, so the
-          two read as one connected frame rather than stacked headers. */}
       <aside className="sticky top-0 hidden h-screen shrink-0 lg:block">
         <Sidebar />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-11 shrink-0 items-center border-b border-yz-neutral-200 bg-yz-panel px-3 lg:px-4">
+        <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center border-b border-yz-neutral-200 bg-yz-panel/90 px-3 backdrop-blur-md lg:px-5">
           <div className="flex items-center gap-2 lg:hidden">
             <button
               type="button"
               onClick={() => setDrawerOpen((open) => !open)}
               aria-label={drawerOpen ? "Close menu" : "Open menu"}
               aria-expanded={drawerOpen}
-              className="flex h-8 w-8 items-center justify-center rounded-sm text-yz-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-yz-ink"
             >
               <svg
                 viewBox="0 0 20 20"
@@ -156,18 +150,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-3 sm:px-5 sm:py-4">
-          <CompletionBanner />
-
-          <div className="mt-3">
+        <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8">
+          <div className="mx-auto w-full max-w-[760px] space-y-5">
+            <CompletionBanner />
             {children}
           </div>
         </main>
       </div>
 
-      {/* The drawer is mounted only while it is open: closed, there is no
-          overlay left on the page to swallow taps, and the content has the
-          whole viewport to itself. */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button

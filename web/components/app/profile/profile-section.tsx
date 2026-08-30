@@ -20,11 +20,6 @@ type ProfileSectionProps = {
   children: ReactNode;
 };
 
-/**
- * One editable region of the profile. Only the section being edited turns
- * into a form, so the page is never one large uncontrolled form, and the
- * heading always states which mode the reader is in.
- */
 export function ProfileSection({
   id,
   title,
@@ -39,13 +34,16 @@ export function ProfileSection({
   children,
 }: ProfileSectionProps) {
   return (
-    <section id={id} className="scroll-mt-20 border-b border-yz-neutral-200 py-4 last:border-b-0">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-[13px] font-bold text-yz-ink">{title}</h2>
+    <section
+      id={id}
+      className="scroll-mt-20 border-b border-yz-neutral-200 py-4 last:border-b-0"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[14px] font-bold text-yz-ink">{title}</h2>
 
           {description && (
-            <p className="mt-0.5 text-[12.5px] leading-5 text-yz-neutral-600">
+            <p className="mt-0.5 max-w-md text-[12.5px] leading-5 text-yz-neutral-600">
               {description}
             </p>
           )}
@@ -58,7 +56,7 @@ export function ProfileSection({
         )}
 
         {editing && (
-          <span className="text-[11px] font-bold text-yz-accent">
+          <span className="text-[11px] font-bold tracking-[0.08em] text-yz-accent uppercase">
             Editing
           </span>
         )}
@@ -68,7 +66,7 @@ export function ProfileSection({
         {status && (
           <p
             role="status"
-            className={`mb-3 rounded-sm border px-3.5 py-2.5 text-[13px] ${
+            className={`mb-3 rounded-lg border px-3.5 py-2.5 text-[13px] ${
               status.tone === "ok"
                 ? "border-yz-ok-line bg-yz-ok-bg text-yz-ok-ink"
                 : "border-yz-danger-line bg-yz-danger-bg text-yz-danger-ink"
@@ -104,7 +102,6 @@ export function ProfileSection({
   );
 }
 
-/** A read-only label/value pair. */
 export function ReadRow({
   label,
   value,
@@ -115,20 +112,14 @@ export function ReadRow({
   trailing?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-yz-neutral-200 py-2.5 last:border-b-0">
-      <div className="min-w-0">
-        <dt className="text-[12px] font-semibold text-yz-neutral-600">
-          {label}
-        </dt>
+    <div className="grid grid-cols-1 gap-1 border-b border-yz-neutral-200 py-2.5 last:border-b-0 sm:grid-cols-[148px_minmax(0,1fr)_auto] sm:items-center sm:gap-4">
+      <dt className="text-[12px] font-medium text-yz-neutral-500">{label}</dt>
 
-        <dd className="mt-0.5 text-[14px] break-words text-yz-ink">
-          {value ?? (
-            <span className="text-yz-neutral-500">Not set</span>
-          )}
-        </dd>
-      </div>
+      <dd className="min-w-0 text-[14px] font-medium break-words text-yz-ink">
+        {value ?? <span className="font-normal text-yz-neutral-500">Not set</span>}
+      </dd>
 
-      {trailing && <div className="shrink-0 pt-4">{trailing}</div>}
+      {trailing ? <div className="shrink-0 sm:justify-self-end">{trailing}</div> : null}
     </div>
   );
 }

@@ -27,14 +27,14 @@ export function ProfileScreen() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-brand text-[19px] font-extrabold tracking-tight text-yz-ink">
+          <h1 className="font-brand text-[22px] leading-none font-extrabold tracking-tight text-yz-ink">
             Personal profile
           </h1>
 
-          <p className="mt-0.5 text-[12.5px] text-yz-neutral-600">
+          <p className="mt-1.5 text-[13px] text-yz-neutral-600">
             Member since {formatJoinedDate(profile.createdAt)}
           </p>
         </div>
@@ -50,7 +50,6 @@ export function ProfileScreen() {
         )}
       </div>
 
-      {/* Two sections of one person: who they are, and where they belong. */}
       <div
         role="tablist"
         aria-label="Profile sections"
@@ -66,7 +65,7 @@ export function ProfileScreen() {
               role="tab"
               aria-selected={active}
               onClick={() => setTab(option.value)}
-              className={`-mb-px border-b-2 px-2.5 py-2 text-[13px] font-semibold transition-colors duration-150 ${
+              className={`-mb-px border-b-2 px-1 py-2.5 text-[13px] font-semibold transition-colors duration-150 ${
                 active
                   ? "border-yz-accent text-yz-ink"
                   : "border-transparent text-yz-neutral-600 hover:text-yz-ink"
@@ -81,12 +80,12 @@ export function ProfileScreen() {
       {tab === "about" ? (
         <>
           {!profile.completion.isComplete && (
-            <div className="rounded-md border border-yz-neutral-200 bg-yz-neutral-100 px-4 py-3">
+            <div className="rounded-[12px] border border-yz-neutral-200 bg-yz-neutral-100 px-4 py-3">
               <CompletionChecklist completion={profile.completion} />
             </div>
           )}
 
-          <div className="rounded-md border border-yz-neutral-200 bg-yz-panel px-5">
+          <div className="rounded-[12px] border border-yz-neutral-200 bg-yz-panel px-4 shadow-[var(--yz-shadow)] sm:px-5">
             <div className="border-b border-yz-neutral-200 py-4">
               <ProfilePicture profile={profile} />
             </div>
