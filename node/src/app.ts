@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 
 import authRoutes from "./auth/auth.routes.js";
+import hierarchyRoutes from "./hierarchy/hierarchy.routes.js";
 import notificationRoutes from "./notifications/notification.routes.js";
 import organisationRoutes from "./organisation/organisation.routes.js";
 import profileRoutes from "./profile/profile.routes.js";
@@ -22,6 +23,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/organisations", organisationRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/work", workRoutes);
+app.use("/api/hierarchy", hierarchyRoutes);
 app.use("/api/reference", referenceRoutes);
 
 export default app;
