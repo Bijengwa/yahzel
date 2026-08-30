@@ -76,49 +76,36 @@ export function DashboardScreen() {
           </div>
         </div>
 
-        <div className="border-t border-yz-neutral-200 px-5 py-4">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-[11px] font-bold tracking-[0.14em] text-yz-neutral-600 uppercase">
-              Profile completion
-            </h2>
+        {!profile.completion.isComplete && (
+          <div className="border-t border-yz-neutral-200 px-5 py-4">
+            <div className="flex items-baseline justify-between gap-4">
+              <h2 className="text-[11px] font-bold tracking-[0.14em] text-yz-neutral-600 uppercase">
+                Profile completion
+              </h2>
 
-            <span className="font-mono text-[15px] font-medium text-yz-ink tabular-nums">
-              {profile.completion.percent}%
-            </span>
+              <span className="font-mono text-[15px] font-medium text-yz-ink tabular-nums">
+                {profile.completion.percent}%
+              </span>
+            </div>
+
+            <CompletionMeter
+              completion={profile.completion}
+              className="mt-3"
+            />
+
+            <CompletionChecklist
+              completion={profile.completion}
+              className="mt-3"
+            />
+
+            <Link
+              href="/profile"
+              className="mt-4 inline-flex rounded-sm bg-yz-ink px-4 py-2 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
+            >
+              Finish your profile
+            </Link>
           </div>
-
-          <CompletionMeter
-            completion={profile.completion}
-            className="mt-3"
-          />
-
-          {profile.completion.isComplete ? (
-            <p className="mt-3 text-[13px] text-yz-neutral-600">
-              Everything Yahzel needs is on file. You can change any of it from{" "}
-              <Link
-                href="/profile"
-                className="font-semibold text-yz-ink underline underline-offset-4"
-              >
-                Profile
-              </Link>
-              .
-            </p>
-          ) : (
-            <>
-              <CompletionChecklist
-                completion={profile.completion}
-                className="mt-3"
-              />
-
-              <Link
-                href="/profile"
-                className="mt-4 inline-flex rounded-sm bg-yz-ink px-4 py-2 text-[13px] font-bold text-yz-ink-contrast transition-colors duration-150 hover:opacity-90"
-              >
-                Finish your profile
-              </Link>
-            </>
-          )}
-        </div>
+        )}
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">

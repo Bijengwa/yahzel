@@ -97,13 +97,11 @@ export function ProfilePicture({ profile }: { profile: Profile }) {
           )}
         </div>
 
-        <p className="mt-2 text-[12px] leading-5 text-yz-neutral-600">
-          {error ? (
-            <span className="text-yz-danger-ink">{error}</span>
-          ) : (
-            "PNG, JPEG or WebP, up to 2 MB."
-          )}
-        </p>
+        {error && (
+          <p className="mt-2 text-[12px] leading-5 text-yz-danger-ink">
+            {error}
+          </p>
+        )}
 
         <input
           ref={inputRef}
