@@ -265,7 +265,7 @@ export function WorkListScreen() {
             />
 
             <label htmlFor="workStatusFilter" className="sr-only">
-              Status
+              Filter by status
             </label>
             <select
               id="workStatusFilter"
@@ -273,7 +273,9 @@ export function WorkListScreen() {
               onChange={(event) => setStatusFilter(event.target.value)}
               className={COMPACT_CONTROL}
             >
-              <option value="">All statuses</option>
+              <option value="">
+                {statusFilter === "" ? "Filter by status" : "All statuses"}
+              </option>
 
               {WORK_STATUS_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -309,7 +311,7 @@ export function WorkListScreen() {
                   htmlFor="workStatusFilterSheet"
                   className="mb-1.5 block text-[12px] font-semibold text-yz-neutral-600"
                 >
-                  Status
+                  Filter by status
                 </label>
                 <select
                   id="workStatusFilterSheet"
@@ -317,7 +319,9 @@ export function WorkListScreen() {
                   onChange={(event) => setStatusFilter(event.target.value)}
                   className={`${COMPACT_CONTROL} w-full`}
                 >
-                  <option value="">All statuses</option>
+                  <option value="">
+                    {statusFilter === "" ? "Filter by status" : "All statuses"}
+                  </option>
 
                   {WORK_STATUS_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
