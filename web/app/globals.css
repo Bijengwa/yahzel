@@ -1,42 +1,34 @@
 @import "tailwindcss";
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Modernist — brand tokens, mirrored from the Yahzel design system
-   (_ds/modernist). Source of truth for the mark's colours; the SVGs in
-   /public/brand bake these same values in so they stay correct when used
-   as <img>, favicon, or app-icon tiles.
-   ────────────────────────────────────────────────────────────────────── */
+   Yahzel surfaces
+   Warm paper in light, a lifted charcoal in dark. Contrast between the page
+   ground and the panel is the whole point — cards must read as objects, not
+   as another wash of the same brown.
+   ───────────────────────────────────────────────────────────────────────── */
 :root {
-  /* The page ground follows the Yahzel theme rather than the operating
-     system: the ThemeProvider puts `.dark` on <html>, so these resolve to
-     whichever surface the chosen theme asks for. */
   --background: var(--yz-bg);
   --foreground: var(--yz-ink);
 
-  /* Core roles — muted, warm surfaces rather than a bright white page.
-     Panel sits a shade lighter than the page ground so cards read as a
-     gentle lift, not a stark white rectangle. */
-  --yz-bg: #ede7de;
-  --yz-surface: #e3dcd0;
-  --yz-panel: #f4efe7;
-  --yz-ink: #2b2622;
+  --yz-bg: #efe8dc;
+  --yz-surface: #e6ddd0;
+  --yz-panel: #faf6f0;
+  --yz-ink: #1f1b18;
   --yz-ink-contrast: #faf6f0;
-  --yz-accent: #ec3013;
-  --yz-accent-2: #e15b47;
-  --yz-divider: color-mix(in srgb, #2b2622 22%, transparent);
+  --yz-accent: #e42710;
+  --yz-accent-2: #f05a42;
+  --yz-divider: color-mix(in srgb, #1f1b18 12%, transparent);
 
-  /* Neutral ramp — warm tan/charcoal instead of generic cool grey. */
-  --yz-neutral-100: #efe9df;
-  --yz-neutral-200: #e2dbcd;
-  --yz-neutral-300: #cfc4b0;
-  --yz-neutral-400: #b0a28b;
-  --yz-neutral-500: #8f8069;
-  --yz-neutral-600: #6f6252;
-  --yz-neutral-700: #564c40;
-  --yz-neutral-800: #3d362d;
-  --yz-neutral-900: #2b2622;
+  --yz-neutral-100: #f3ece3;
+  --yz-neutral-200: #e4d9cb;
+  --yz-neutral-300: #cfc0ad;
+  --yz-neutral-400: #a8947c;
+  --yz-neutral-500: #7d6c59;
+  --yz-neutral-600: #5c4f42;
+  --yz-neutral-700: #43392f;
+  --yz-neutral-800: #2d261f;
+  --yz-neutral-900: #1f1b18;
 
-  /* Accent ramp */
   --yz-accent-100: #fff2ef;
   --yz-accent-200: #ffe0d9;
   --yz-accent-300: #ffc4b8;
@@ -47,8 +39,6 @@
   --yz-accent-800: #7c1405;
   --yz-accent-900: #4d170e;
 
-  /* Status roles. Muted on purpose - a warning should read as a nudge, not
-     an alarm, and Yahzel already spends its loud colour on the accent. */
   --yz-warn-bg: #fdf6e4;
   --yz-warn-line: #e3bf6a;
   --yz-warn-ink: #6f4f11;
@@ -58,31 +48,31 @@
   --yz-danger-bg: #fdefec;
   --yz-danger-line: #f0b4a8;
   --yz-danger-ink: #a3230c;
+
+  --yz-shadow: 0 1px 2px color-mix(in srgb, #1f1b18 6%, transparent),
+    0 8px 24px -16px color-mix(in srgb, #1f1b18 18%, transparent);
+  --yz-radius: 12px;
 }
 
-/* Dark theme — a warm, comfortable dark surface rather than pure black.
-   Applied only inside the authenticated app shell (see ThemeProvider); the
-   pre-authentication screens are unaffected. Roles keep the same meaning as
-   :root above, just inverted for a dark ground. */
 .dark {
-  --yz-bg: #18130f;
-  --yz-surface: #201a15;
-  --yz-panel: #241d18;
-  --yz-ink: #f3ece4;
-  --yz-ink-contrast: #18130f;
-  --yz-accent: #ff5b3d;
-  --yz-accent-2: #ff8064;
-  --yz-divider: color-mix(in srgb, #f3ece4 16%, transparent);
+  --yz-bg: #100e0c;
+  --yz-surface: #171411;
+  --yz-panel: #1e1a16;
+  --yz-ink: #f6f0e8;
+  --yz-ink-contrast: #100e0c;
+  --yz-accent: #ff6244;
+  --yz-accent-2: #ff8a72;
+  --yz-divider: color-mix(in srgb, #f6f0e8 12%, transparent);
 
-  --yz-neutral-100: #221c17;
-  --yz-neutral-200: #2b241e;
-  --yz-neutral-300: #3c332b;
-  --yz-neutral-400: #59493c;
-  --yz-neutral-500: #7a685a;
-  --yz-neutral-600: #9c8b7c;
-  --yz-neutral-700: #bcae9f;
-  --yz-neutral-800: #ddd2c5;
-  --yz-neutral-900: #f3ece4;
+  --yz-neutral-100: #1a1613;
+  --yz-neutral-200: #26211c;
+  --yz-neutral-300: #3a322b;
+  --yz-neutral-400: #5c4e43;
+  --yz-neutral-500: #8a7666;
+  --yz-neutral-600: #b09c8c;
+  --yz-neutral-700: #cbbbae;
+  --yz-neutral-800: #e4d8cc;
+  --yz-neutral-900: #f6f0e8;
 
   --yz-warn-bg: #332711;
   --yz-warn-line: #6b5322;
@@ -93,6 +83,9 @@
   --yz-danger-bg: #331813;
   --yz-danger-line: #6b2e22;
   --yz-danger-ink: #ff9c85;
+
+  --yz-shadow: 0 1px 0 color-mix(in srgb, #f6f0e8 4%, transparent),
+    0 12px 32px -20px rgba(0, 0, 0, 0.65);
 }
 
 @theme inline {
@@ -101,7 +94,6 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Brand scale exposed to Tailwind: bg-yz-ink, text-yz-accent, … */
   --color-yz-bg: var(--yz-bg);
   --color-yz-surface: var(--yz-surface);
   --color-yz-panel: var(--yz-panel);
@@ -140,9 +132,11 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* One focus treatment across the whole authenticated app, so keyboard
-   position is always obvious against both the white panels and the grey
-   ground. */
+::selection {
+  background: color-mix(in srgb, var(--yz-accent) 28%, transparent);
+  color: var(--yz-ink);
+}
+
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--yz-accent);
   outline-offset: 2px;
