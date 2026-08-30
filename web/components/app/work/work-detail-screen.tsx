@@ -95,36 +95,46 @@ export function WorkDetailScreen({ workItemId }: { workItemId: number }) {
   const [assignStatus, setAssignStatus] = useState<Status>(null);
   const [assigning, setAssigning] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const result = await fetchWorkItem(workItemId);
-
-      setWorkItem(result.workItem);
-      setActiveAssignment(result.activeAssignment);
-      setHistory(result.assignmentHistory);
-      setForm(formFromItem(result.workItem));
-      setError(null);
-      setNotFound(false);
-
+  const load = useCallback(
+    async (preserveEditForm = false) => {
       try {
-        const { members: next } = await fetchOrganisationPeople(
-          result.workItem.organisationId,
-        );
+        const result = await fetchWorkItem(workItemId);
 
-        setMembers(next);
-      } catch {
-        // Names and reassignment become unavailable, but the Work Item
-        // itself must still render.
-      }
-    } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 404) {
-        setNotFound(true);
-        return;
-      }
+        setWorkItem(result.workItem);
+        setActiveAssignment(result.activeAssignment);
+        setHistory(result.assignmentHistory);
 
-      setError(failureMessage(caught));
-    }
-  }, [workItemId]);
+        // A reassignment completing while the Edit form is open must not
+        // clobber whatever the person is still mid-typing there.
+        if (!preserveEditForm) {
+          setForm(formFromItem(result.workItem));
+        }
+
+        setError(null);
+        setNotFound(false);
+
+        try {
+          const { members: next } = await fetchOrganisationPeople(
+            result.workItem.organisationId,
+          );
+
+          setMembers(next);
+        } catch {
+          // Names and reassignment become unavailable, but the Work Item
+          // itself must still render.
+        }
+      } catch (caught) {
+        if (caught instanceof ApiError && caught.status === 404) {
+          setNotFound(true);
+          setError(null);
+          return;
+        }
+
+        setError(failureMessage(caught));
+      }
+    },
+    [workItemId],
+  );
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -191,7 +201,9 @@ export function WorkDetailScreen({ workItemId }: { workItemId: number }) {
       setAssignStatus({ tone: "ok", message });
       setReassigning(false);
       setAssignForm(EMPTY_ASSIGN);
-      await load();
+      // Preserve whatever is still mid-typing in the Edit form, if it's
+      // open — this reassignment must not silently discard it.
+      await load(editing);
     } catch (caught) {
       if (caught instanceof ApiError) {
         setAssignErrors(caught.byField());
