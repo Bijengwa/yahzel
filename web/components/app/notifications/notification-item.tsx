@@ -5,8 +5,9 @@ import Link from "next/link";
 import { describeRelativeTime, type YzNotification } from "@/lib/notifications";
 
 /**
- * One notification row. Dense on purpose — a dot, a message, a time — so a
- * dozen fit in the panel without scrolling.
+ * One non-invitation notification row: a dot, a message, a time. Dense on
+ * purpose so the OTHER section reads as a compact list rather than a stack
+ * of cards.
  */
 export function NotificationItem({
   notification,
@@ -43,14 +44,14 @@ export function NotificationItem({
   );
 
   const className =
-    "-mx-2 flex items-start gap-2 rounded-sm px-2 py-2 text-left transition-colors duration-150 hover:bg-yz-neutral-100";
+    "flex w-full items-start gap-2 py-2.5 text-left transition-colors duration-150 hover:bg-yz-neutral-100";
 
   if (notification.actionUrl) {
     return (
       <Link
         href={notification.actionUrl}
         onClick={() => onOpen(notification)}
-        className={`block w-full ${className}`}
+        className={className}
       >
         {body}
       </Link>
@@ -58,11 +59,7 @@ export function NotificationItem({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(notification)}
-      className={`w-full ${className}`}
-    >
+    <button type="button" onClick={() => onOpen(notification)} className={className}>
       {body}
     </button>
   );
