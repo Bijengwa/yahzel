@@ -227,7 +227,7 @@ export function WorkListScreen() {
             </SelectField>
           </div>
 
-          {items === null ? (
+          {items === null && !error ? (
             <p className="text-[13px] text-yz-neutral-600">Loading…</p>
           ) : scoped.length === 0 ? (
             <p className="text-[13px] leading-6 text-yz-neutral-600">
