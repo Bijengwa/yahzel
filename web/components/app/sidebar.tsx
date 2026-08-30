@@ -10,18 +10,13 @@ import { useProfile } from "./profile/profile-provider";
 import { Avatar } from "./profile/avatar";
 
 const NAV_LINK =
-  "flex h-9 items-center rounded-sm text-[13px] font-semibold transition-colors duration-150";
+  "flex h-9 items-center rounded-lg text-[13px] font-semibold transition-colors duration-150";
 
 export function Sidebar({
   onNavigate,
   variant = "rail",
 }: {
   onNavigate?: () => void;
-  /**
-   * "rail" is the desktop sidebar, which can be collapsed to icons.
-   * "drawer" is the mobile overlay: it is never collapsible — it is either
-   * open or gone — and its control closes it instead.
-   */
   variant?: "rail" | "drawer";
 }) {
   const pathname = usePathname();
@@ -29,13 +24,8 @@ export function Sidebar({
 
   const [railCollapsed, setRailCollapsed] = useState(false);
 
-  // A drawer is never a narrower desktop sidebar; it is a full-width panel
-  // that is either open or not on the page at all.
   const collapsed = variant === "rail" && railCollapsed;
 
-  // The desktop rail stays mounted (just display:none) even when the mobile
-  // drawer's own Sidebar instance is open, so the knockout mask id must be
-  // unique per instance — a collision paints the mark as a solid block.
   const uid = useId();
 
   function handleNavigate() {
@@ -45,12 +35,11 @@ export function Sidebar({
   return (
     <div
       className={`flex h-full flex-col border-r border-yz-neutral-200 bg-yz-panel transition-[width] duration-200 ${
-        variant === "drawer" ? "w-full" : collapsed ? "w-14" : "w-[200px]"
+        variant === "drawer" ? "w-full" : collapsed ? "w-14" : "w-[216px]"
       }`}
     >
-      {/* Brand + collapse control */}
       <div
-        className={`flex h-11 shrink-0 items-center border-b border-yz-neutral-200 ${
+        className={`flex h-12 shrink-0 items-center border-b border-yz-neutral-200 ${
           collapsed ? "justify-center px-0" : "justify-between px-2.5"
         }`}
       >
@@ -90,13 +79,10 @@ export function Sidebar({
                 ? "Expand sidebar"
                 : "Collapse sidebar"
           }
-          className="group relative flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-yz-ink transition-colors hover:bg-yz-neutral-100"
+          className="group relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-yz-ink transition-colors hover:bg-yz-neutral-100"
         >
           {collapsed ? (
             <>
-              {/* Default: the mark. On hover, it fades out for a hamburger
-                  underneath — signalling "click to open the sidebar"
-                  without ever permanently losing the brand mark. */}
               <YahzelIcon
                 size={17}
                 className="text-yz-ink transition-opacity duration-150 group-hover:opacity-0 group-focus-visible:opacity-0"
@@ -136,7 +122,6 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* Main navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-2" aria-label="Main">
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
@@ -156,8 +141,8 @@ export function Sidebar({
                     collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
                   } ${
                     active
-                      ? "text-yz-accent"
-                      : "text-yz-neutral-700 hover:bg-yz-neutral-100 hover:text-yz-ink"
+                      ? "bg-yz-neutral-100 text-yz-ink"
+                      : "text-yz-neutral-600 hover:bg-yz-neutral-100 hover:text-yz-ink"
                   }`}
                 >
                   <span className="shrink-0">{item.icon}</span>
@@ -170,7 +155,6 @@ export function Sidebar({
         </ul>
       </nav>
 
-      {/* Settings + profile, pinned to the bottom */}
       <div className="shrink-0 border-t border-yz-neutral-200 px-2 py-2">
         <Link
           href={SETTINGS_ITEM.href}
@@ -183,8 +167,8 @@ export function Sidebar({
             collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
           } ${
             pathname === SETTINGS_ITEM.href
-              ? "text-yz-accent"
-              : "text-yz-neutral-700 hover:bg-yz-neutral-100 hover:text-yz-ink"
+              ? "bg-yz-neutral-100 text-yz-ink"
+              : "text-yz-neutral-600 hover:bg-yz-neutral-100 hover:text-yz-ink"
           }`}
         >
           <span className="shrink-0">{SETTINGS_ITEM.icon}</span>
@@ -192,14 +176,13 @@ export function Sidebar({
           {!collapsed && <span>Settings</span>}
         </Link>
 
-        {/* The profile picture is the profile button — no extra chrome. */}
         {profile && (
           <Link
             href="/profile"
             onClick={handleNavigate}
             title={collapsed ? profile.fullName : undefined}
             aria-label={`Open profile for ${profile.fullName}`}
-            className={`mt-1 flex items-center rounded-sm py-1.5 transition-colors hover:bg-yz-neutral-100 ${
+            className={`mt-1 flex items-center rounded-lg py-1.5 transition-colors hover:bg-yz-neutral-100 ${
               collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
             }`}
           >
