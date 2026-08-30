@@ -36,7 +36,6 @@ import {
   updateMembership,
 } from "./organisation.repository.js";
 import { sendInvitationEmail } from "./organisation.email.js";
-import { createNotification } from "../notifications/notification.service.js";
 import {
   INVITATION_EXPIRY_DAYS,
   designationLabel,
@@ -845,21 +844,6 @@ export async function inviteToOrganisation(
 
   const invitation = await findInvitationWithContext(row.id);
 
-  // A person with a Yahzel account gets an in-app notification they can act
-  // on immediately. Somebody invited by email only, with no account yet,
-  // cannot receive one — the email above is the only channel that reaches
-  // them until they register (see linkInvitationsToNewProfile).
-  if (person) {
-    await createNotification({
-      recipientProfileId: person.id,
-      type: "organisation.invited",
-      message: `${inviter.full_name} invited you to join ${organisation.name}.`,
-      organisationId,
-      invitationId: row.id,
-      actionUrl: "/organisation",
-    });
-  }
-
   return {
     message: person
       ? `${person.full_name} has been invited to ${organisation.name}.`
@@ -892,10 +876,7 @@ export async function cancelInvitation(
   organisationId: number,
   invitationId: number,
 ) {
-  const { organisation, membership } = await requireMembership(
-    userId,
-    organisationId,
-  );
+  const { membership } = await requireMembership(userId, organisationId);
 
   requireAdmin(membership);
 
@@ -921,19 +902,6 @@ export async function cancelInvitation(
     status: "cancelled",
     responded_at: new Date().toISOString(),
   });
-
-  // Only a registered recipient can be reached inside Yahzel — somebody
-  // invited by email alone has no notification to receive.
-  if (invitation.profile_id) {
-    await createNotification({
-      recipientProfileId: invitation.profile_id,
-      type: "organisation.invitation_cancelled",
-      message: `Your invitation to join ${organisation.name} was withdrawn.`,
-      organisationId: organisation.id,
-      invitationId: invitation.id,
-      actionUrl: "/organisation",
-    });
-  }
 
   return { message: "The invitation was withdrawn." };
 }
@@ -1020,23 +988,6 @@ export async function acceptInvitation(
     responded_at: new Date().toISOString(),
   });
 
-  // The organisation-side recipient is the person who sent the invitation —
-  // the one contact we already have without guessing which admin should
-  // hear about it.
-  const organisation = await findOrganisationById(invitation.organisation_id);
-  const accepter = await requireProfile(userId);
-
-  if (organisation) {
-    await createNotification({
-      recipientProfileId: invitation.invited_by,
-      type: "organisation.invitation_accepted",
-      message: `${accepter.full_name} accepted the invitation to join ${organisation.name}.`,
-      organisationId: organisation.id,
-      invitationId: invitation.id,
-      actionUrl: `/organisation/${organisation.id}`,
-    });
-  }
-
   return {
     message: "You are now part of this organisation.",
     membership: publicMembership(membership),
@@ -1054,20 +1005,6 @@ export async function declineInvitation(
     status: "declined",
     responded_at: new Date().toISOString(),
   });
-
-  const organisation = await findOrganisationById(invitation.organisation_id);
-  const decliner = await requireProfile(userId);
-
-  if (organisation) {
-    await createNotification({
-      recipientProfileId: invitation.invited_by,
-      type: "organisation.invitation_declined",
-      message: `${decliner.full_name} declined the invitation to join ${organisation.name}.`,
-      organisationId: organisation.id,
-      invitationId: invitation.id,
-      actionUrl: `/organisation/${organisation.id}`,
-    });
-  }
 
   return { message: "The invitation was declined." };
 }
