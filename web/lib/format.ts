@@ -86,3 +86,41 @@ export function formatMonthYear(iso: string | null): string | null {
     year: "numeric",
   });
 }
+
+/** "Sep 30" — compact, for due dates in a list or detail view. */
+export function formatShortDate(iso: string | null): string | null {
+  if (!iso) {
+    return null;
+  }
+
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
+ * "Today", "Yesterday", or the short date beyond that — the wording an
+ * "Updated" column reads at a glance rather than a full timestamp.
+ */
+export function formatRelativeDay(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+
+  const startOf = (value: Date) =>
+    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+
+  const dayDiff = Math.round(
+    (startOf(now) - startOf(date)) / (24 * 60 * 60 * 1000),
+  );
+
+  if (dayDiff === 0) {
+    return "Today";
+  }
+
+  if (dayDiff === 1) {
+    return "Yesterday";
+  }
+
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
