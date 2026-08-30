@@ -3,9 +3,15 @@ import type { Request, Response } from "express";
 import { currentUserId } from "../middleware/require-auth.js";
 import {
   HierarchyError,
+  addDepartmentMemberToDepartment,
+  createDepartment,
   createHierarchyPosition,
+  deleteDepartment,
   deleteHierarchyPosition,
+  getDepartmentDetail,
   getHierarchy,
+  removeDepartmentMemberFromDepartment,
+  updateDepartment,
   updateHierarchyPosition,
 } from "./hierarchy.service.js";
 
@@ -106,5 +112,132 @@ export async function destroy(req: Request, res: Response): Promise<void> {
     res.status(200).json(result);
   } catch (error) {
     handleFailure(res, error, "Failed to delete position");
+  }
+}
+
+/* ------------------------------------------------------------------------
+   Departments
+   --------------------------------------------------------------------- */
+
+export async function createDepartmentHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+
+    const result = await createDepartment(
+      currentUserId(req),
+      organisationId,
+      req.body ?? {},
+    );
+
+    res.status(201).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to create department");
+  }
+}
+
+export async function updateDepartmentHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+    const departmentId = readId(req.params.departmentId, "department");
+
+    const result = await updateDepartment(
+      currentUserId(req),
+      organisationId,
+      departmentId,
+      req.body ?? {},
+    );
+
+    res.status(200).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to update department");
+  }
+}
+
+export async function destroyDepartmentHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+    const departmentId = readId(req.params.departmentId, "department");
+
+    const result = await deleteDepartment(
+      currentUserId(req),
+      organisationId,
+      departmentId,
+    );
+
+    res.status(200).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to delete department");
+  }
+}
+
+export async function showDepartmentHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+    const departmentId = readId(req.params.departmentId, "department");
+
+    const result = await getDepartmentDetail(
+      currentUserId(req),
+      organisationId,
+      departmentId,
+    );
+
+    res.status(200).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to load department");
+  }
+}
+
+export async function addDepartmentMemberHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+    const departmentId = readId(req.params.departmentId, "department");
+
+    const result = await addDepartmentMemberToDepartment(
+      currentUserId(req),
+      organisationId,
+      departmentId,
+      req.body ?? {},
+    );
+
+    res.status(201).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to add department member");
+  }
+}
+
+export async function removeDepartmentMemberHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+    const departmentId = readId(req.params.departmentId, "department");
+    const memberId = readId(req.params.memberId, "member");
+
+    const result = await removeDepartmentMemberFromDepartment(
+      currentUserId(req),
+      organisationId,
+      departmentId,
+      memberId,
+    );
+
+    res.status(200).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to remove department member");
   }
 }

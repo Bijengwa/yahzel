@@ -1,7 +1,18 @@
 import { Router } from "express";
 
 import { requireAuth } from "../middleware/require-auth.js";
-import { create, destroy, index, update } from "./hierarchy.controller.js";
+import {
+  addDepartmentMemberHandler,
+  create,
+  createDepartmentHandler,
+  destroy,
+  destroyDepartmentHandler,
+  index,
+  removeDepartmentMemberHandler,
+  showDepartmentHandler,
+  update,
+  updateDepartmentHandler,
+} from "./hierarchy.controller.js";
 
 const router = Router();
 
@@ -15,5 +26,24 @@ router.get("/:organisationId", index);
 router.post("/:organisationId/positions", create);
 router.patch("/:organisationId/positions/:positionId", update);
 router.delete("/:organisationId/positions/:positionId", destroy);
+
+router.post("/:organisationId/departments", createDepartmentHandler);
+router.get("/:organisationId/departments/:departmentId", showDepartmentHandler);
+router.patch(
+  "/:organisationId/departments/:departmentId",
+  updateDepartmentHandler,
+);
+router.delete(
+  "/:organisationId/departments/:departmentId",
+  destroyDepartmentHandler,
+);
+router.post(
+  "/:organisationId/departments/:departmentId/members",
+  addDepartmentMemberHandler,
+);
+router.delete(
+  "/:organisationId/departments/:departmentId/members/:memberId",
+  removeDepartmentMemberHandler,
+);
 
 export default router;

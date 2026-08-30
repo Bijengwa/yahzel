@@ -150,9 +150,11 @@ body {
 
 /* ──────────────────────────────────────────────────────────────────────────
    Organisation hierarchy tree — connector lines in pure CSS, no canvas or
-   diagram library. Below the sm breakpoint, branches stack vertically
-   instead of spreading horizontally, so a wide chart never forces a phone
-   into horizontal scrolling; the same markup serves both layouts.
+   diagram library. The layout is a real horizontal tree at every viewport,
+   desktop and mobile alike: it never collapses into a vertically-stacked,
+   indented list. Its own overflow-x-auto wrapper (see org-chart.tsx) is the
+   one place a chart wider than the viewport is allowed to scroll, so a wide
+   tree stays usable on a phone without the page itself ever overflowing.
    ────────────────────────────────────────────────────────────────────── */
 .org-tree,
 .org-tree ul {
@@ -169,9 +171,9 @@ body {
 
 .org-tree ul {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0;
 }
 
 .org-tree li {
@@ -180,14 +182,14 @@ body {
   align-items: center;
   position: relative;
   list-style: none;
-  padding-top: 1.5rem;
+  padding: 1.5rem 1rem 0 1rem;
 }
 
 .org-tree > ul > li {
   padding-top: 0;
 }
 
-/* The stub connecting a node down to its own children row/column. */
+/* The stub connecting a node down to its own children row. */
 .org-tree li > ul {
   position: relative;
   padding-top: 1.5rem;
@@ -204,69 +206,53 @@ body {
   transform: translateX(-50%);
 }
 
-@media (min-width: 40rem) {
-  .org-tree ul {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 0;
-  }
+/* The horizontal bar joining siblings, met by a vertical stub down to
+   each one — drawn only among children who share a real parent. Roots
+   with no common parent (an organisation can have several) never get
+   this: see ".org-tree > ul > li::before" below, which removes it at
+   the outermost level only. */
+.org-tree ul ul > li::before,
+.org-tree ul ul > li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 1.5rem;
+  border-top: 1.5px solid var(--yz-neutral-400);
+}
 
-  .org-tree li {
-    padding: 1.5rem 1rem 0 1rem;
-  }
+.org-tree ul ul > li::before {
+  right: 50%;
+}
 
-  .org-tree > ul > li {
-    padding-top: 0;
-  }
+.org-tree ul ul > li::after {
+  left: 50%;
+  border-left: 1.5px solid var(--yz-neutral-400);
+}
 
-  /* The horizontal bar joining siblings, met by a vertical stub down to
-     each one — drawn only among children who share a real parent. Roots
-     with no common parent (an organisation can have several) never get
-     this: see ".org-tree > ul > li::before" below, which removes it at
-     the outermost level only. */
-  .org-tree ul ul > li::before,
-  .org-tree ul ul > li::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    width: 50%;
-    height: 1.5rem;
-    border-top: 1.5px solid var(--yz-neutral-400);
-  }
+.org-tree ul ul > li:first-child::before,
+.org-tree ul ul > li:last-child::after {
+  border: none;
+}
 
-  .org-tree ul ul > li::before {
-    right: 50%;
-  }
+.org-tree ul ul > li:only-child::before,
+.org-tree ul ul > li:only-child::after {
+  display: none;
+}
 
-  .org-tree ul ul > li::after {
-    left: 50%;
-    border-left: 1.5px solid var(--yz-neutral-400);
-  }
+.org-tree ul ul > li:only-child {
+  padding-top: 0;
+}
 
-  .org-tree ul ul > li:first-child::before,
-  .org-tree ul ul > li:last-child::after {
-    border: none;
-  }
+/* Independent roots (no shared parent) sit side by side with breathing
+   room, but never a connecting line between them. */
+.org-tree > ul {
+  gap: 2.5rem;
+}
 
-  .org-tree ul ul > li:only-child::before,
-  .org-tree ul ul > li:only-child::after {
-    display: none;
-  }
-
-  .org-tree ul ul > li:only-child {
-    padding-top: 0;
-  }
-
-  /* Independent roots (no shared parent) sit side by side with breathing
-     room, but never a connecting line between them. */
-  .org-tree > ul {
-    gap: 2.5rem;
-  }
-
-  .org-tree > ul > li::before,
-  .org-tree > ul > li::after {
-    display: none;
-  }
+.org-tree > ul > li::before,
+.org-tree > ul > li::after {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

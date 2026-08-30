@@ -348,8 +348,242 @@ check(
   remaining,
 );
 
+/* ------------------------------------------------------ departments (W1) */
+
+r = await call(`/api/hierarchy/${orgA}`, json("GET", founder.token));
+check(
+  "the hierarchy response includes an (empty) departments list",
+  Array.isArray(r.body.departments) && r.body.departments.length === 0,
+  r.body.departments,
+);
+
+// Fresh structure for the department checks, independent of the deletions above.
+r = await call(
+  `/api/hierarchy/${orgA}/positions`,
+  json("POST", founder.token, { name: "Deputy Head" }),
+);
+const newHeadForDeptId = r.body.position?.id as number;
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions`,
+  json("POST", founder.token, {
+    name: "Would-be Manager",
+    parentPositionId: newHeadForDeptId,
+  }),
+);
+const wouldBeManagerId = r.body.position?.id as number;
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments`,
+  json("POST", member.token, { name: "Should never exist" }),
+);
+check("a non-admin cannot create a department", r.status === 403, r.body);
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments`,
+  json("POST", founder.token, {
+    name: "Procurement Department",
+    parentPositionId: newHeadForDeptId,
+  }),
+);
+check(
+  "an admin can create a headless department",
+  r.status === 201 &&
+    r.body.department?.headPositionId === null &&
+    r.body.department?.memberCount === 0,
+  r.body,
+);
+const procurementDeptId = r.body.department?.id as number;
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments/${procurementDeptId}`,
+  json("PATCH", founder.token, { headPositionId: wouldBeManagerId }),
+);
+check(
+  "assigning a head that already had a parent normalises headPositionName",
+  r.status === 200 &&
+    r.body.department?.headPositionId === wouldBeManagerId &&
+    r.body.department?.headPositionName === "Would-be Manager",
+  r.body,
+);
+
+r = await call(`/api/hierarchy/${orgA}`, json("GET", founder.token));
+const managerAfterHeadship = r.body.positions?.find(
+  (p: { id: number }) => p.id === wouldBeManagerId,
+);
+check(
+  "the new head's own parentPositionId is normalised to null",
+  managerAfterHeadship?.parentPositionId === null,
+  managerAfterHeadship,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${wouldBeManagerId}`,
+  json("PATCH", founder.token, { parentPositionId: newHeadForDeptId }),
+);
+check(
+  "a department head's parent cannot be changed via the position endpoint",
+  r.status === 422 && r.body.errors?.[0]?.field === "parentPositionId",
+  r.body,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments`,
+  json("POST", founder.token, {
+    name: "Duplicate Head Department",
+    headPositionId: wouldBeManagerId,
+  }),
+);
+check(
+  "a position cannot head two departments",
+  r.status === 422 && r.body.errors?.[0]?.field === "headPositionId",
+  r.body,
+);
+
+// A fresh, unheaded position chain, so this specifically exercises the
+// cycle check rather than the head-uniqueness check above.
+r = await call(
+  `/api/hierarchy/${orgA}/positions`,
+  json("POST", founder.token, { name: "Ops Head" }),
+);
+const opsHeadId = r.body.position?.id as number;
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions`,
+  json("POST", founder.token, { name: "Ops Sub", parentPositionId: opsHeadId }),
+);
+const opsSubId = r.body.position?.id as number;
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments`,
+  json("POST", founder.token, {
+    name: "Cyclic Department",
+    parentPositionId: opsSubId,
+    headPositionId: opsHeadId,
+  }),
+);
+check(
+  "a department cannot be parented under its own head's subtree",
+  r.status === 422 && r.body.errors?.[0]?.field === "parentPositionId",
+  r.body,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments/${procurementDeptId}`,
+  json("GET", member.token),
+);
+check("a non-admin cannot view department detail", r.status === 403, r.body);
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments/${procurementDeptId}`,
+  json("GET", founder.token),
+);
+check(
+  "department detail lists the (still empty) roster",
+  r.status === 200 && Array.isArray(r.body.members) && r.body.members.length === 0,
+  r.body,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments/${procurementDeptId}/members`,
+  json("POST", founder.token, { memberId: 999999 }),
+);
+check(
+  "adding a nonexistent member is rejected",
+  r.status === 422 && r.body.errors?.[0]?.field === "memberId",
+  r.body,
+);
+
+const memberRow = await db("organisation_members")
+  .where({ organisation_id: orgA, profile_id: member.id })
+  .first();
+const memberRowId = memberRow.id as number;
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments/${procurementDeptId}/members`,
+  json("POST", founder.token, { memberId: memberRowId }),
+);
+check("an admin can add a department member", r.status === 201, r.body);
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments/${procurementDeptId}/members`,
+  json("POST", founder.token, { memberId: memberRowId }),
+);
+check(
+  "adding the same member twice is rejected",
+  r.status === 422 && r.body.errors?.[0]?.field === "memberId",
+  r.body,
+);
+
+r = await call(`/api/hierarchy/${orgA}`, json("GET", founder.token));
+const procurementInList = r.body.departments?.find(
+  (d: { id: number }) => d.id === procurementDeptId,
+);
+check(
+  "the tree list reflects the new member count",
+  procurementInList?.memberCount === 1,
+  procurementInList,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments/${procurementDeptId}/members/${memberRowId}`,
+  json("DELETE", member.token),
+);
+check("a non-admin cannot remove a department member", r.status === 403, r.body);
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments/${procurementDeptId}/members/${memberRowId}`,
+  json("DELETE", founder.token),
+);
+check("an admin can remove a department member", r.status === 200, r.body);
+
+r = await call(
+  `/api/hierarchy/${orgB}/departments`,
+  json("POST", outsider.token, {
+    name: "Cross-org head test",
+    headPositionId: wouldBeManagerId,
+  }),
+);
+check(
+  "a position from another organisation cannot become a head",
+  r.status === 422 && r.body.errors?.[0]?.field === "headPositionId",
+  r.body,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/departments/${procurementDeptId}`,
+  json("DELETE", founder.token),
+);
+check("an admin can delete a department", r.status === 200, r.body);
+
+r = await call(`/api/hierarchy/${orgA}`, json("GET", founder.token));
+const managerAfterDeptDelete = r.body.positions?.find(
+  (p: { id: number }) => p.id === wouldBeManagerId,
+);
+check(
+  "deleting the department leaves its former head as a root position",
+  managerAfterDeptDelete?.parentPositionId === null,
+  managerAfterDeptDelete,
+);
+
+const remainingDeptRow = await db("departments")
+  .where({ id: procurementDeptId })
+  .first();
+check(
+  "the deleted department is actually gone",
+  remainingDeptRow === undefined,
+  remainingDeptRow,
+);
+
 /* ------------------------------------------------------------- teardown */
 
+await db("department_members")
+  .whereIn(
+    "department_id",
+    db("departments").select("id").whereIn("organisation_id", [orgA, orgB]),
+  )
+  .delete();
+await db("departments").whereIn("organisation_id", [orgA, orgB]).delete();
 await db("positions").whereIn("organisation_id", [orgA, orgB]).delete();
 await db("organisations").whereIn("id", [orgA, orgB]).delete();
 await db("profiles")

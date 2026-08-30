@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-import type { Position, PositionNode } from "@/lib/hierarchy";
+import type { Department, HierarchyNode, Position } from "@/lib/hierarchy";
 
 function Icon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -48,6 +48,24 @@ function NodeAction({
   );
 }
 
+function ViewIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M1.5 8S3.8 3 8 3s6.5 5 6.5 5-2.3 5-6.5 5-6.5-5-6.5-5Z" />
+      <circle cx="8" cy="8" r="1.8" />
+    </Icon>
+  );
+}
+
+function DepartmentIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="5.5" width="10" height="7.5" rx="1" />
+      <path d="M6 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5" />
+    </Icon>
+  );
+}
+
 /**
  * One box in the chart plus its subtree. The connector lines around it are
  * pure CSS (see globals.css's .org-tree rules) driven entirely by this
@@ -56,55 +74,119 @@ function NodeAction({
 export function OrgChartNode({
   node,
   onAddChild,
-  onEdit,
-  onDelete,
+  onAddDepartment,
+  onEditPosition,
+  onDeletePosition,
+  onViewDepartment,
+  onEditDepartment,
+  onDeleteDepartment,
 }: {
-  node: PositionNode;
+  node: HierarchyNode;
   onAddChild: (parentId: number) => void;
-  onEdit: (position: Position) => void;
-  onDelete: (position: Position) => void;
+  onAddDepartment: (parentPositionId: number) => void;
+  onEditPosition: (position: Position) => void;
+  onDeletePosition: (position: Position) => void;
+  onViewDepartment: (department: Department) => void;
+  onEditDepartment: (department: Department) => void;
+  onDeleteDepartment: (department: Department) => void;
 }) {
   return (
     <li>
-      <div className="flex w-[9.5rem] flex-col items-center gap-1 rounded-md border border-yz-neutral-300 bg-yz-panel px-3 py-2.5 text-center shadow-sm">
-        <span className="line-clamp-2 text-[13px] leading-tight font-semibold text-yz-ink">
-          {node.name}
-        </span>
+      {node.kind === "department" ? (
+        <div className="flex w-[10.5rem] flex-col items-center gap-1 rounded-md border border-yz-accent/40 bg-yz-accent/5 px-3 py-2.5 text-center shadow-sm">
+          <span className="text-[9.5px] font-bold tracking-wide text-yz-accent uppercase">
+            Department
+          </span>
 
-        <span className="flex items-center gap-0.5">
-          <NodeAction label={`Add position under ${node.name}`} onClick={() => onAddChild(node.id)}>
-            <Icon>
-              <path d="M8 3v10M3 8h10" />
-            </Icon>
-          </NodeAction>
+          <span className="line-clamp-2 text-[13px] leading-tight font-semibold text-yz-ink">
+            {node.name}
+          </span>
 
-          <NodeAction label={`Edit ${node.name}`} onClick={() => onEdit(node)}>
-            <Icon>
-              <path d="M10.5 3.5 12.5 5.5 5 13H3v-2Z" />
-            </Icon>
-          </NodeAction>
+          <span className="text-[11px] leading-tight text-yz-neutral-600">
+            Head: {node.headPositionName ?? "Unassigned"}
+          </span>
 
-          <NodeAction
-            label={`Delete ${node.name}`}
-            tone="danger"
-            onClick={() => onDelete(node)}
-          >
-            <Icon>
-              <path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.5 4.5 5 13h6l.5-8.5" />
-            </Icon>
-          </NodeAction>
-        </span>
-      </div>
+          <span className="text-[11px] leading-tight text-yz-neutral-600">
+            {node.memberCount} member{node.memberCount === 1 ? "" : "s"}
+          </span>
+
+          <span className="flex items-center gap-0.5">
+            <NodeAction label={`View ${node.name}`} onClick={() => onViewDepartment(node)}>
+              <ViewIcon />
+            </NodeAction>
+
+            <NodeAction label={`Edit ${node.name}`} onClick={() => onEditDepartment(node)}>
+              <Icon>
+                <path d="M10.5 3.5 12.5 5.5 5 13H3v-2Z" />
+              </Icon>
+            </NodeAction>
+
+            <NodeAction
+              label={`Delete ${node.name}`}
+              tone="danger"
+              onClick={() => onDeleteDepartment(node)}
+            >
+              <Icon>
+                <path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.5 4.5 5 13h6l.5-8.5" />
+              </Icon>
+            </NodeAction>
+          </span>
+        </div>
+      ) : (
+        <div className="flex w-[9.5rem] flex-col items-center gap-1 rounded-md border border-yz-neutral-300 bg-yz-panel px-3 py-2.5 text-center shadow-sm">
+          <span className="line-clamp-2 text-[13px] leading-tight font-semibold text-yz-ink">
+            {node.name}
+          </span>
+
+          <span className="flex items-center gap-0.5">
+            <NodeAction
+              label={`Add position under ${node.name}`}
+              onClick={() => onAddChild(node.id)}
+            >
+              <Icon>
+                <path d="M8 3v10M3 8h10" />
+              </Icon>
+            </NodeAction>
+
+            <NodeAction
+              label={`Add department under ${node.name}`}
+              onClick={() => onAddDepartment(node.id)}
+            >
+              <DepartmentIcon />
+            </NodeAction>
+
+            <NodeAction label={`Edit ${node.name}`} onClick={() => onEditPosition(node)}>
+              <Icon>
+                <path d="M10.5 3.5 12.5 5.5 5 13H3v-2Z" />
+              </Icon>
+            </NodeAction>
+
+            <NodeAction
+              label={`Delete ${node.name}`}
+              tone="danger"
+              onClick={() => onDeletePosition(node)}
+            >
+              <Icon>
+                <path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.5 4.5 5 13h6l.5-8.5" />
+              </Icon>
+            </NodeAction>
+          </span>
+        </div>
+      )}
 
       {node.children.length > 0 && (
         <ul>
           {node.children.map((child) => (
             <OrgChartNode
-              key={child.id}
+              key={`${child.kind}-${child.id}`}
               node={child}
               onAddChild={onAddChild}
-              onEdit={onEdit}
-              onDelete={onDelete}
+              onAddDepartment={onAddDepartment}
+              onEditPosition={onEditPosition}
+              onDeletePosition={onDeletePosition}
+              onViewDepartment={onViewDepartment}
+              onEditDepartment={onEditDepartment}
+              onDeleteDepartment={onDeleteDepartment}
             />
           ))}
         </ul>

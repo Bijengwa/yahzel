@@ -30,6 +30,34 @@ export function validatePositionName(raw: unknown): Validated<string> {
   return { ok: true, value };
 }
 
+export const DEPARTMENT_NAME_MIN_LENGTH = 2;
+export const DEPARTMENT_NAME_MAX_LENGTH = 150;
+
+export function validateDepartmentName(raw: unknown): Validated<string> {
+  const value = String(raw ?? "").trim().replace(/\s+/g, " ");
+
+  if (value.length < DEPARTMENT_NAME_MIN_LENGTH) {
+    return {
+      ok: false,
+      errors: [{ field: "name", message: "Enter a name for this department." }],
+    };
+  }
+
+  if (value.length > DEPARTMENT_NAME_MAX_LENGTH) {
+    return {
+      ok: false,
+      errors: [
+        {
+          field: "name",
+          message: `Names cannot be longer than ${DEPARTMENT_NAME_MAX_LENGTH} characters.`,
+        },
+      ],
+    };
+  }
+
+  return { ok: true, value };
+}
+
 /** organisationId and positionId — both untrusted body/param values. */
 export function validatePositiveId(
   raw: unknown,
