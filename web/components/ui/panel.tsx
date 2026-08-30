@@ -1,12 +1,31 @@
 import type { ReactNode } from "react";
 
 /**
- * The page furniture every area of the authenticated app is built from.
- *
- * Settings established this shape — a titled group of compact rows inside one
- * bordered panel — and Organisation reuses it rather than inventing a second
- * card system. Anything that needs a new kind of row should add it here.
+ * Shared page furniture. Keep width, rhythm and surface treatment here so
+ * Settings, Profile and Organisation do not invent their own spacing.
  */
+
+const WIDTH = {
+  narrow: "max-w-[640px]",
+  default: "max-w-[760px]",
+  wide: "max-w-[960px]",
+} as const;
+
+export function PageFrame({
+  children,
+  width = "default",
+  className = "",
+}: {
+  children: ReactNode;
+  width?: keyof typeof WIDTH;
+  className?: string;
+}) {
+  return (
+    <div className={`mx-auto w-full ${WIDTH[width]} space-y-5 ${className}`}>
+      {children}
+    </div>
+  );
+}
 
 export function PageHeader({
   title,
@@ -20,12 +39,12 @@ export function PageHeader({
   return (
     <header className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="font-brand text-[19px] font-extrabold tracking-tight text-yz-ink">
+        <h1 className="font-brand text-[22px] leading-none font-extrabold tracking-tight text-yz-ink">
           {title}
         </h1>
 
         {description && (
-          <p className="mt-0.5 text-[12.5px] text-yz-neutral-600">
+          <p className="mt-1.5 max-w-xl text-[13px] leading-5 text-yz-neutral-600">
             {description}
           </p>
         )}
@@ -45,14 +64,13 @@ export function Panel({
 }) {
   return (
     <div
-      className={`rounded-md border border-yz-neutral-200 bg-yz-panel px-5 ${className}`}
+      className={`overflow-hidden rounded-[12px] border border-yz-neutral-200 bg-yz-panel px-4 shadow-[var(--yz-shadow)] sm:px-5 ${className}`}
     >
       {children}
     </div>
   );
 }
 
-/** One labelled group inside a panel. New sections slot in beside it. */
 export function PanelGroup({
   title,
   trailing,
@@ -65,17 +83,18 @@ export function PanelGroup({
   return (
     <div className="border-b border-yz-neutral-200 py-4 last:border-b-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[12px] font-bold text-yz-neutral-600">{title}</h2>
+        <h2 className="text-[11px] font-bold tracking-[0.08em] text-yz-neutral-500 uppercase">
+          {title}
+        </h2>
 
         {trailing && <div className="shrink-0">{trailing}</div>}
       </div>
 
-      <div className="mt-2.5">{children}</div>
+      <div className="mt-3">{children}</div>
     </div>
   );
 }
 
-/** A compact row: a label and description on the left, a control on the right. */
 export function PanelRow({
   label,
   description,
@@ -89,12 +108,12 @@ export function PanelRow({
 }) {
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-[13px] font-semibold text-yz-ink">{label}</div>
+          <div className="text-[14px] font-semibold text-yz-ink">{label}</div>
 
           {description && (
-            <div className="mt-0.5 text-[12px] leading-5 text-yz-neutral-600">
+            <div className="mt-0.5 text-[12.5px] leading-5 text-yz-neutral-600">
               {description}
             </div>
           )}
@@ -108,7 +127,6 @@ export function PanelRow({
   );
 }
 
-/** The one way an action reports how it went. */
 export function StatusMessage({
   tone,
   children,
@@ -121,7 +139,7 @@ export function StatusMessage({
   return (
     <p
       role="status"
-      className={`rounded-sm border px-3.5 py-2.5 text-[13px] ${
+      className={`rounded-lg border px-3.5 py-2.5 text-[13px] ${
         tone === "ok"
           ? "border-yz-ok-line bg-yz-ok-bg text-yz-ok-ink"
           : "border-yz-danger-line bg-yz-danger-bg text-yz-danger-ink"
