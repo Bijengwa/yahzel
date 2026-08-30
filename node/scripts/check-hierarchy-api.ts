@@ -136,19 +136,22 @@ check(
   r.body,
 );
 
-/* ---------------------------------------------------------------- create */
+/* ------------------------------------------------------- head-on-create */
 
-r = await call(
-  `/api/hierarchy/${orgA}/positions`,
-  json("POST", founder.token, { name: "Head" }),
-);
-check("an admin can create a root position", r.status === 201, r.body);
-const headId = r.body.position?.id as number;
+r = await call(`/api/hierarchy/${orgA}`, json("GET", founder.token));
 check(
-  "the root position has no parent",
-  r.body.position?.parentPositionId === null,
-  r.body.position,
+  "registering an organisation automatically creates its Head",
+  r.body.positions?.length === 1 && r.body.positions?.[0]?.name === "Head",
+  r.body.positions,
 );
+check(
+  "the auto-created Head has no parent",
+  r.body.positions?.[0]?.parentPositionId === null,
+  r.body.positions,
+);
+const headId = r.body.positions?.[0]?.id as number;
+
+/* ---------------------------------------------------------------- create */
 
 r = await call(
   `/api/hierarchy/${orgA}/positions`,
@@ -194,16 +197,11 @@ check(
 
 r = await call(`/api/hierarchy/${orgB}`, json("GET", outsider.token));
 check(
-  "organisation B's hierarchy starts empty regardless of A's activity",
-  (r.body.positions ?? []).length === 0,
+  "organisation B has only its own auto-created Head, regardless of A's activity",
+  r.body.positions?.length === 1 && r.body.positions?.[0]?.name === "Head",
   r.body.positions,
 );
-
-r = await call(
-  `/api/hierarchy/${orgB}/positions`,
-  json("POST", outsider.token, { name: "B Root" }),
-);
-const bRootId = r.body.position?.id as number;
+const bRootId = r.body.positions?.[0]?.id as number;
 
 r = await call(
   `/api/hierarchy/${orgA}/positions`,

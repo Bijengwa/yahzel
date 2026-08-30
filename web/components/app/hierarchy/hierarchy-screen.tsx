@@ -23,7 +23,7 @@ import {
   type Position,
 } from "@/lib/hierarchy";
 import { fetchOrganisation, type Organisation } from "@/lib/organisation";
-import { PositionNodeRow } from "./position-node";
+import { OrgChart } from "./org-chart";
 
 function failureMessage(caught: unknown): string {
   return caught instanceof ApiError
@@ -98,10 +98,13 @@ export function HierarchyScreen({
     [positions],
   );
 
-  const descendantCount =
+  const descendantNames =
     deleteTarget && positions
-      ? collectSubtreeIds(positions, deleteTarget.id).length - 1
-      : 0;
+      ? collectSubtreeIds(positions, deleteTarget.id)
+          .filter((id) => id !== deleteTarget.id)
+          .map((id) => positions.find((position) => position.id === id)?.name)
+          .filter((name): name is string => Boolean(name))
+      : [];
 
   /**
    * Every position except `excludingId` and anything beneath it — offering
@@ -295,18 +298,12 @@ export function HierarchyScreen({
               </Button>
             </div>
           ) : (
-            <ul className="space-y-1">
-              {tree.map((node) => (
-                <PositionNodeRow
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  onAddChild={openAdd}
-                  onEdit={openEdit}
-                  onDelete={setDeleteTarget}
-                />
-              ))}
-            </ul>
+            <OrgChart
+              roots={tree}
+              onAddChild={openAdd}
+              onEdit={openEdit}
+              onDelete={setDeleteTarget}
+            />
           )}
         </PanelGroup>
       </Panel>
@@ -436,22 +433,31 @@ export function HierarchyScreen({
       <Modal
         open={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
-        title="Delete position?"
-        description={
-          deleteTarget
-            ? descendantCount > 0
-              ? `This will also delete ${descendantCount} sub-position${
-                  descendantCount === 1 ? "" : "s"
-                } beneath ${deleteTarget.name}. This cannot be undone.`
-              : `This will delete ${deleteTarget.name}. This cannot be undone.`
-            : undefined
-        }
+        title={deleteTarget ? `Delete "${deleteTarget.name}"?` : "Delete position?"}
       >
         {deleteError && (
           <StatusMessage tone="error" className="mb-3">
             {deleteError}
           </StatusMessage>
         )}
+
+        {deleteTarget && descendantNames.length > 0 && (
+          <div className="mb-3 rounded-sm border border-yz-danger-line bg-yz-danger-bg px-3.5 py-2.5">
+            <p className="text-[12.5px] font-semibold text-yz-danger-ink">
+              This will also delete:
+            </p>
+
+            <ul className="mt-1.5 list-disc pl-4 text-[12.5px] leading-6 text-yz-danger-ink">
+              {descendantNames.map((name, index) => (
+                <li key={`${name}-${index}`}>{name}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <p className="mb-3 text-[13px] leading-6 text-yz-neutral-700">
+          This action cannot be undone.
+        </p>
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
