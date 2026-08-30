@@ -84,52 +84,51 @@ export function NotificationsScreen() {
       {error && <StatusMessage tone="error">{error}</StatusMessage>}
 
       <Panel>
-        <PanelGroup title="INVITATIONS">
-          {loading ? (
-            <p className="text-[13px] text-yz-neutral-600">Loading…</p>
-          ) : invitationNotifications.length === 0 ? (
-            <p className="text-[13px] leading-6 text-yz-neutral-600">
-              No pending invitations.
-            </p>
-          ) : (
-            <ul className="divide-y divide-yz-neutral-200">
-              {invitationNotifications.map((notification) => (
-                <li key={notification.id}>
-                  <InvitationNotificationItem
-                    notification={notification}
-                    invitation={invitations.find(
-                      (item) => item.id === notification.invitationId,
-                    )}
-                    onAnswered={(invitationId) =>
-                      handleAnswered(notification, invitationId)
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-        </PanelGroup>
+        {loading ? (
+          <p className="py-4 text-[13px] text-yz-neutral-600">Loading…</p>
+        ) : invitationNotifications.length === 0 &&
+          otherNotifications.length === 0 ? (
+          <p className="py-4 text-[13px] leading-6 text-yz-neutral-600">
+            Nothing new here.
+          </p>
+        ) : (
+          <>
+            {invitationNotifications.length > 0 && (
+              <PanelGroup title="INVITATIONS">
+                <ul className="divide-y divide-yz-neutral-200">
+                  {invitationNotifications.map((notification) => (
+                    <li key={notification.id}>
+                      <InvitationNotificationItem
+                        notification={notification}
+                        invitation={invitations.find(
+                          (item) => item.id === notification.invitationId,
+                        )}
+                        onAnswered={(invitationId) =>
+                          handleAnswered(notification, invitationId)
+                        }
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </PanelGroup>
+            )}
 
-        <PanelGroup title="OTHER">
-          {loading ? (
-            <p className="text-[13px] text-yz-neutral-600">Loading…</p>
-          ) : otherNotifications.length === 0 ? (
-            <p className="text-[13px] leading-6 text-yz-neutral-600">
-              No other notifications.
-            </p>
-          ) : (
-            <ul className="divide-y divide-yz-neutral-200">
-              {otherNotifications.map((notification) => (
-                <li key={notification.id}>
-                  <NotificationItem
-                    notification={notification}
-                    onOpen={handleOpenOther}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-        </PanelGroup>
+            {otherNotifications.length > 0 && (
+              <PanelGroup title="OTHER">
+                <ul className="divide-y divide-yz-neutral-200">
+                  {otherNotifications.map((notification) => (
+                    <li key={notification.id}>
+                      <NotificationItem
+                        notification={notification}
+                        onOpen={handleOpenOther}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </PanelGroup>
+            )}
+          </>
+        )}
       </Panel>
     </div>
   );

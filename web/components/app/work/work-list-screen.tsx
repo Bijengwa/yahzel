@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import {
   PageHeader,
   Panel,
@@ -49,6 +50,7 @@ export function WorkListScreen() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sort, setSort] = useState<SortKey>("updated");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -202,7 +204,51 @@ export function WorkListScreen() {
             </div>
           }
         >
-          <div className="mb-3 flex flex-wrap items-center gap-2">
+          {/* Mobile: search on its own row, Filters/Sort as a compact pair
+              below it — never three stacked full-width fields. */}
+          <div className="mb-3 flex flex-col gap-2 sm:hidden">
+            <label htmlFor="workSearchMobile" className="sr-only">
+              Search by title
+            </label>
+            <input
+              id="workSearchMobile"
+              type="text"
+              placeholder="Search work…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className={`${COMPACT_CONTROL} w-full`}
+            />
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="flex-1 justify-center"
+                onClick={() => setFiltersOpen(true)}
+              >
+                Filters{statusFilter ? " · 1" : ""}
+              </Button>
+
+              <label htmlFor="workSortMobile" className="sr-only">
+                Sort
+              </label>
+              <select
+                id="workSortMobile"
+                value={sort}
+                onChange={(event) => setSort(event.target.value as SortKey)}
+                className={`${COMPACT_CONTROL} flex-1`}
+              >
+                <option value="updated">Recently updated</option>
+                <option value="due">Due soonest</option>
+                <option value="progress">Progress</option>
+                <option value="title">Title (A–Z)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Desktop: everything inline, one compact row. */}
+          <div className="mb-3 hidden items-center gap-2 sm:flex">
             <label htmlFor="workSearch" className="sr-only">
               Search by title
             </label>
@@ -212,7 +258,7 @@ export function WorkListScreen() {
               placeholder="Search by title…"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className={`${COMPACT_CONTROL} w-full sm:w-56`}
+              className={`${COMPACT_CONTROL} w-56`}
             />
 
             <label htmlFor="workStatusFilter" className="sr-only">
@@ -222,7 +268,7 @@ export function WorkListScreen() {
               id="workStatusFilter"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className={`${COMPACT_CONTROL} w-full sm:w-auto`}
+              className={COMPACT_CONTROL}
             >
               <option value="">All statuses</option>
 
@@ -240,7 +286,7 @@ export function WorkListScreen() {
               id="workSort"
               value={sort}
               onChange={(event) => setSort(event.target.value as SortKey)}
-              className={`${COMPACT_CONTROL} w-full sm:w-auto`}
+              className={COMPACT_CONTROL}
             >
               <option value="updated">Recently updated</option>
               <option value="due">Due soonest</option>
@@ -248,6 +294,57 @@ export function WorkListScreen() {
               <option value="title">Title (A–Z)</option>
             </select>
           </div>
+
+          <Modal
+            open={filtersOpen}
+            onClose={() => setFiltersOpen(false)}
+            title="Filters"
+          >
+            <div className="grid gap-3">
+              <div>
+                <label
+                  htmlFor="workStatusFilterSheet"
+                  className="mb-1.5 block text-[12px] font-semibold text-yz-neutral-600"
+                >
+                  Status
+                </label>
+                <select
+                  id="workStatusFilterSheet"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                  className={`${COMPACT_CONTROL} w-full`}
+                >
+                  <option value="">All statuses</option>
+
+                  {WORK_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setFiltersOpen(false)}
+                >
+                  Done
+                </Button>
+
+                {statusFilter && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setStatusFilter("")}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Modal>
 
           {items === null ? (
             error ? null : (
