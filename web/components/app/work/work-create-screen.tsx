@@ -20,6 +20,7 @@ import {
   type Participation,
 } from "@/lib/organisation";
 import { createWorkItem } from "@/lib/work";
+import { useProfile } from "../profile/profile-provider";
 import { AssigneeSelect } from "./assignee-select";
 
 const EMPTY = {
@@ -37,6 +38,7 @@ const EMPTY = {
  */
 export function WorkCreateScreen() {
   const router = useRouter();
+  const { profile } = useProfile();
 
   const [organisations, setOrganisations] = useState<Participation[] | null>(
     null,
@@ -139,7 +141,7 @@ export function WorkCreateScreen() {
     <div className="space-y-3">
       <PageHeader
         title="New Work"
-        description="A standalone Work Item, assigned directly to someone in your organisation."
+        description="Assign this to yourself or to someone in your organisation."
         actions={
           <Link
             href="/work"
@@ -232,6 +234,7 @@ export function WorkCreateScreen() {
                   hint={
                     organisationId ? undefined : "Choose an organisation first."
                   }
+                  currentProfileId={profile?.id ?? null}
                   onChange={(value) => update("assigneeProfileId", value)}
                 />
               </div>

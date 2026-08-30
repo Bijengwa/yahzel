@@ -6,7 +6,7 @@ import { WorkProgress } from "./work-progress";
 import { WorkStatusPill } from "./work-status-pill";
 
 const GRID =
-  "grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]";
+  "grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]";
 
 export function WorkRowHeader() {
   return (
@@ -14,10 +14,10 @@ export function WorkRowHeader() {
       className={`hidden border-b border-yz-neutral-200 pb-2 text-[11px] font-bold tracking-[0.04em] text-yz-neutral-600 uppercase sm:grid sm:items-center sm:gap-3 ${GRID}`}
     >
       <span>Work</span>
-      <span>Owner</span>
       <span>Status</span>
-      <span>Progress</span>
+      <span>Assignee</span>
       <span>Due</span>
+      <span>Progress</span>
       <span>Updated</span>
     </div>
   );
@@ -46,7 +46,7 @@ export function WorkRow({
   return (
     <Link
       href={`/work/${item.id}`}
-      className="-mx-2 block rounded-sm px-2 py-2.5 transition-colors duration-150 hover:bg-yz-neutral-100"
+      className="-mx-2 block rounded-sm px-2 py-2 transition-colors duration-150 hover:bg-yz-neutral-100"
     >
       {/* Desktop: one aligned row */}
       <div className={`hidden items-center gap-3 sm:grid ${GRID}`}>
@@ -54,16 +54,12 @@ export function WorkRow({
           {item.title}
         </span>
 
-        <span className="min-w-0 truncate text-[12.5px] text-yz-neutral-700">
-          {owner}
-        </span>
-
         <span>
           <WorkStatusPill status={item.status} />
         </span>
 
-        <span>
-          <WorkProgress value={item.progress} />
+        <span className="min-w-0 truncate text-[12.5px] text-yz-neutral-700">
+          {owner}
         </span>
 
         <span
@@ -72,6 +68,10 @@ export function WorkRow({
           }`}
         >
           {formatShortDate(item.dueAt) ?? "—"}
+        </span>
+
+        <span>
+          <WorkProgress value={item.progress} />
         </span>
 
         <span className="text-[12.5px] tabular-nums text-yz-neutral-600">

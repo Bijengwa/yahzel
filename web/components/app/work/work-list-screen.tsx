@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { SelectField, TextField } from "@/components/ui/field";
 import {
   PageHeader,
   Panel,
@@ -23,6 +22,9 @@ import { WorkRow, WorkRowHeader } from "./work-row";
 
 type View = "mine" | "assigned";
 type SortKey = "updated" | "due" | "progress" | "title";
+
+const COMPACT_CONTROL =
+  "h-8 rounded-sm border border-yz-neutral-300 bg-yz-panel px-2.5 text-[12.5px] text-yz-ink outline-none transition-colors duration-150 focus:border-yz-ink";
 
 function failureMessage(caught: unknown): string {
   return caught instanceof ApiError
@@ -94,18 +96,28 @@ export function WorkListScreen() {
     void load();
   }, [load]);
 
-  const scoped = useMemo(() => {
+  // My Work = whatever is currently on my plate, including work I assigned
+  // to myself. Assigned by Me = work I created that someone else currently
+  // holds. Under W0 every Work Item always has exactly one active assignee,
+  // so these two views are mutually exclusive — a self-assigned item never
+  // leaks into "Assigned by Me".
+  const byView = useMemo(() => {
     if (!items || !profile) {
       return [];
     }
 
-    const byView =
-      view === "mine"
-        ? items.filter(
-            (item) => item.activeAssignment?.assigneeProfileId === profile.id,
-          )
-        : items.filter((item) => item.createdBy === profile.id);
+    return view === "mine"
+      ? items.filter(
+          (item) => item.activeAssignment?.assigneeProfileId === profile.id,
+        )
+      : items.filter(
+          (item) =>
+            item.createdBy === profile.id &&
+            item.activeAssignment?.assigneeProfileId !== profile.id,
+        );
+  }, [items, profile, view]);
 
+  const scoped = useMemo(() => {
     const term = search.trim().toLowerCase();
 
     const bySearch = term
@@ -133,13 +145,13 @@ export function WorkListScreen() {
 
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
-  }, [items, profile, view, search, statusFilter, sort]);
+  }, [byView, search, statusFilter, sort]);
 
   return (
     <div className="space-y-3">
       <PageHeader
         title="Work"
-        description="Standalone Work Items you create and assign directly to someone."
+        description="Work you're handling yourself, and Work you've assigned to others."
         actions={
           <Link
             href="/work/new"
@@ -190,20 +202,27 @@ export function WorkListScreen() {
             </div>
           }
         >
-          <div className="mb-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px_180px]">
-            <TextField
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <label htmlFor="workSearch" className="sr-only">
+              Search by title
+            </label>
+            <input
               id="workSearch"
-              label="Search"
+              type="text"
               placeholder="Search by title…"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              className={`${COMPACT_CONTROL} w-full sm:w-56`}
             />
 
-            <SelectField
+            <label htmlFor="workStatusFilter" className="sr-only">
+              Status
+            </label>
+            <select
               id="workStatusFilter"
-              label="Status"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
+              className={`${COMPACT_CONTROL} w-full sm:w-auto`}
             >
               <option value="">All statuses</option>
 
@@ -212,28 +231,35 @@ export function WorkListScreen() {
                   {option.label}
                 </option>
               ))}
-            </SelectField>
+            </select>
 
-            <SelectField
+            <label htmlFor="workSort" className="sr-only">
+              Sort
+            </label>
+            <select
               id="workSort"
-              label="Sort"
               value={sort}
               onChange={(event) => setSort(event.target.value as SortKey)}
+              className={`${COMPACT_CONTROL} w-full sm:w-auto`}
             >
               <option value="updated">Recently updated</option>
               <option value="due">Due soonest</option>
               <option value="progress">Progress</option>
               <option value="title">Title (A–Z)</option>
-            </SelectField>
+            </select>
           </div>
 
-          {items === null && !error ? (
-            <p className="text-[13px] text-yz-neutral-600">Loading…</p>
+          {items === null ? (
+            error ? null : (
+              <p className="text-[13px] text-yz-neutral-600">Loading…</p>
+            )
           ) : scoped.length === 0 ? (
             <p className="text-[13px] leading-6 text-yz-neutral-600">
-              {view === "mine"
-                ? "There is currently no Work assigned to you."
-                : "You have not assigned any Work yet."}
+              {byView.length === 0
+                ? view === "mine"
+                  ? "There is currently no Work assigned to you."
+                  : "You have not assigned any Work to anyone yet."
+                : "No Work matches your search or filters."}
             </p>
           ) : (
             <div>

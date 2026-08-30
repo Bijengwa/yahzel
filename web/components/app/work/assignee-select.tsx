@@ -13,6 +13,7 @@ export function AssigneeSelect({
   value,
   error,
   hint,
+  currentProfileId,
   onChange,
 }: {
   id: string;
@@ -21,6 +22,7 @@ export function AssigneeSelect({
   value: string;
   error?: string;
   hint?: string;
+  currentProfileId?: number | null;
   onChange: (value: string) => void;
 }) {
   const eligible = members.filter(
@@ -38,11 +40,17 @@ export function AssigneeSelect({
     >
       <option value="">Choose a person</option>
 
-      {eligible.map((member) => (
-        <option key={member.profileId} value={member.profileId ?? ""}>
-          {member.fullName ?? member.email ?? `Member #${member.profileId}`}
-        </option>
-      ))}
+      {eligible.map((member) => {
+        const name =
+          member.fullName ?? member.email ?? `Member #${member.profileId}`;
+        const isSelf = member.profileId === currentProfileId;
+
+        return (
+          <option key={member.profileId} value={member.profileId ?? ""}>
+            {isSelf ? `${name} (You)` : name}
+          </option>
+        );
+      })}
     </SelectField>
   );
 }

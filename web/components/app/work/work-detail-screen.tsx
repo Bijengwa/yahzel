@@ -482,6 +482,7 @@ export function WorkDetailScreen({ workItemId }: { workItemId: number }) {
                   members={members}
                   value={assignForm.assigneeProfileId}
                   error={assignErrors.assigneeProfileId}
+                  currentProfileId={profile?.id ?? null}
                   onChange={(value) =>
                     setAssignForm((c) => ({ ...c, assigneeProfileId: value }))
                   }
