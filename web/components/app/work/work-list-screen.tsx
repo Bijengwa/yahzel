@@ -18,6 +18,7 @@ import {
   WORK_STATUS_OPTIONS,
   type WorkItemSummary,
 } from "@/lib/work";
+import { HierarchyEntry } from "../hierarchy/hierarchy-entry";
 import { useProfile } from "../profile/profile-provider";
 import { WorkRow, WorkRowHeader } from "./work-row";
 
@@ -163,6 +164,8 @@ export function WorkListScreen() {
           </Link>
         }
       />
+
+      <HierarchyEntry />
 
       {error && (
         <StatusMessage tone="error">
