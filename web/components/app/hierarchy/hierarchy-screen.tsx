@@ -14,16 +14,28 @@ import {
 } from "@/components/ui/panel";
 import { ApiError } from "@/lib/api";
 import {
+  assignOccupant,
   buildPositionTree,
   collectSubtreeIds,
   createPosition,
   deletePosition,
+  endOccupancy,
   fetchHierarchy,
+  fetchOrganisationOccupancy,
+  fetchPositionOccupancyHistory,
+  replaceOccupant,
   updatePosition,
+  type Occupancy,
   type Position,
 } from "@/lib/hierarchy";
-import { fetchOrganisation, type Organisation } from "@/lib/organisation";
+import {
+  fetchOrganisation,
+  fetchOrganisationPeople,
+  type Member,
+  type Organisation,
+} from "@/lib/organisation";
 import { OrgChart } from "./org-chart";
+import type { OccupancyDisplay } from "./org-chart-node";
 
 function failureMessage(caught: unknown): string {
   return caught instanceof ApiError
@@ -49,6 +61,8 @@ export function HierarchyScreen({
 }) {
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [positions, setPositions] = useState<Position[] | null>(null);
+  const [occupancies, setOccupancies] = useState<Occupancy[] | null>(null);
+  const [members, setMembers] = useState<Member[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
 
@@ -66,15 +80,28 @@ export function HierarchyScreen({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const [occupancyTarget, setOccupancyTarget] = useState<Position | null>(null);
+  const [occupancyMemberId, setOccupancyMemberId] = useState("");
+  const [occupancyError, setOccupancyError] = useState<string | null>(null);
+  const [occupancySaving, setOccupancySaving] = useState(false);
+  const [occupancyHistory, setOccupancyHistory] = useState<Occupancy[] | null>(
+    null,
+  );
+
   const load = useCallback(async () => {
     try {
-      const [orgResult, hierarchyResult] = await Promise.all([
-        fetchOrganisation(organisationId),
-        fetchHierarchy(organisationId),
-      ]);
+      const [orgResult, hierarchyResult, occupancyResult, peopleResult] =
+        await Promise.all([
+          fetchOrganisation(organisationId),
+          fetchHierarchy(organisationId),
+          fetchOrganisationOccupancy(organisationId),
+          fetchOrganisationPeople(organisationId),
+        ]);
 
       setOrganisation(orgResult.organisation);
       setPositions(hierarchyResult.positions);
+      setOccupancies(occupancyResult.occupancies);
+      setMembers(peopleResult.members);
       setError(null);
       setForbidden(false);
     } catch (caught) {
@@ -97,6 +124,51 @@ export function HierarchyScreen({
     () => (positions ? buildPositionTree(positions) : []),
     [positions],
   );
+
+  const memberById = useMemo(
+    () => new Map((members ?? []).map((member) => [member.id, member])),
+    [members],
+  );
+
+  const occupancyByPosition = useMemo(
+    () =>
+      new Map(
+        (occupancies ?? [])
+          .filter((occupancy) => occupancy.isActive)
+          .map((occupancy) => [occupancy.positionId, occupancy]),
+      ),
+    [occupancies],
+  );
+
+  /**
+   * The organisation's Head is the earliest-created root position — the one
+   * migration 010/organisation.repository.ts's createOrganisationWithAdmin
+   * always creates first, whatever it is renamed to afterward. `positions`
+   * is already ordered by created_at ascending (hierarchy.repository.ts's
+   * listPositions), so the first root encountered here is that one. This
+   * never reads `designation` — occupying this position is what makes
+   * somebody the Head, not a manually-set field.
+   */
+  const headPositionId = useMemo(
+    () => positions?.find((position) => position.parentPositionId === null)?.id ?? null,
+    [positions],
+  );
+
+  function memberDisplayName(member: Member): string {
+    return (
+      member.fullName ?? member.username ?? member.email ?? `Member #${member.id}`
+    );
+  }
+
+  function getOccupancy(positionId: number): OccupancyDisplay {
+    const occupancy = occupancyByPosition.get(positionId);
+    const member = occupancy ? memberById.get(occupancy.memberId) : undefined;
+
+    return {
+      occupantName: member ? memberDisplayName(member) : null,
+      isHeadPosition: positionId === headPositionId,
+    };
+  }
 
   const descendantNames =
     deleteTarget && positions
@@ -216,6 +288,83 @@ export function HierarchyScreen({
     }
   }
 
+  async function openOccupancy(position: Position) {
+    setOccupancyTarget(position);
+    setOccupancyError(null);
+    setOccupancyHistory(null);
+
+    const current = occupancyByPosition.get(position.id);
+    setOccupancyMemberId(current ? String(current.memberId) : "");
+
+    try {
+      const result = await fetchPositionOccupancyHistory(
+        organisationId,
+        position.id,
+      );
+      setOccupancyHistory(result.history);
+    } catch {
+      // History is a convenience, not required for assigning/ending an
+      // occupant — the modal still works without it.
+    }
+  }
+
+  async function submitOccupancy() {
+    if (!occupancyTarget || !occupancyMemberId) {
+      return;
+    }
+
+    setOccupancySaving(true);
+    setOccupancyError(null);
+
+    try {
+      const current = occupancyByPosition.get(occupancyTarget.id);
+
+      if (current) {
+        await replaceOccupant(
+          organisationId,
+          occupancyTarget.id,
+          Number(occupancyMemberId),
+        );
+      } else {
+        await assignOccupant(
+          organisationId,
+          occupancyTarget.id,
+          Number(occupancyMemberId),
+        );
+      }
+
+      setOccupancyTarget(null);
+      await load();
+    } catch (caught) {
+      setOccupancyError(
+        caught instanceof ApiError
+          ? (caught.forField("memberId") ?? caught.message)
+          : failureMessage(caught),
+      );
+    } finally {
+      setOccupancySaving(false);
+    }
+  }
+
+  async function submitEndOccupancy() {
+    if (!occupancyTarget) {
+      return;
+    }
+
+    setOccupancySaving(true);
+    setOccupancyError(null);
+
+    try {
+      await endOccupancy(organisationId, occupancyTarget.id);
+      setOccupancyTarget(null);
+      await load();
+    } catch (caught) {
+      setOccupancyError(failureMessage(caught));
+    } finally {
+      setOccupancySaving(false);
+    }
+  }
+
   if (forbidden) {
     return (
       <div className="space-y-3">
@@ -300,9 +449,11 @@ export function HierarchyScreen({
           ) : (
             <OrgChart
               roots={tree}
+              getOccupancy={getOccupancy}
               onAddChild={openAdd}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
+              onManageOccupant={(position) => void openOccupancy(position)}
             />
           )}
         </PanelGroup>
@@ -476,6 +627,120 @@ export function HierarchyScreen({
             {deleting ? "Deleting…" : "Delete"}
           </Button>
         </div>
+      </Modal>
+
+      <Modal
+        open={occupancyTarget !== null}
+        onClose={() => setOccupancyTarget(null)}
+        title={occupancyTarget ? `Occupant — ${occupancyTarget.name}` : "Occupant"}
+      >
+        {occupancyTarget && (
+          <div className="space-y-3.5">
+            {occupancyError && (
+              <StatusMessage tone="error">{occupancyError}</StatusMessage>
+            )}
+
+            <p className="text-[13px] leading-6 text-yz-neutral-700">
+              {occupancyByPosition.has(occupancyTarget.id) ? (
+                <>
+                  Currently occupied by{" "}
+                  <span className="font-semibold text-yz-ink">
+                    {getOccupancy(occupancyTarget.id).occupantName}
+                  </span>
+                  .
+                </>
+              ) : (
+                "This position is vacant."
+              )}
+            </p>
+
+            <SelectField
+              id="occupancyMemberId"
+              label={
+                occupancyByPosition.has(occupancyTarget.id)
+                  ? "Replace with"
+                  : "Assign"
+              }
+              value={occupancyMemberId}
+              onChange={(event) => setOccupancyMemberId(event.target.value)}
+            >
+              <option value="">Choose a person</option>
+
+              {(members ?? [])
+                .filter((member) => member.status === "active")
+                .map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {memberDisplayName(member)}
+                  </option>
+                ))}
+            </SelectField>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={occupancySaving || !occupancyMemberId}
+                onClick={() => void submitOccupancy()}
+              >
+                {occupancySaving
+                  ? "Saving…"
+                  : occupancyByPosition.has(occupancyTarget.id)
+                    ? "Replace occupant"
+                    : "Assign"}
+              </Button>
+
+              {occupancyByPosition.has(occupancyTarget.id) && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  disabled={occupancySaving}
+                  onClick={() => void submitEndOccupancy()}
+                >
+                  End occupancy
+                </Button>
+              )}
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={occupancySaving}
+                onClick={() => setOccupancyTarget(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+
+            {occupancyHistory && occupancyHistory.length > 0 && (
+              <div className="border-t border-yz-neutral-200 pt-3">
+                <p className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-yz-neutral-500">
+                  History
+                </p>
+
+                <ul className="space-y-1 text-[12.5px] leading-tight text-yz-neutral-700">
+                  {occupancyHistory.map((entry) => {
+                    const historyMember = memberById.get(entry.memberId);
+
+                    return (
+                      <li key={entry.id}>
+                        {historyMember
+                          ? memberDisplayName(historyMember)
+                          : `Member #${entry.memberId}`}
+                        {" — "}
+                        {new Date(entry.startsAt).toLocaleDateString()} to{" "}
+                        {entry.endsAt
+                          ? new Date(entry.endsAt).toLocaleDateString()
+                          : "present"}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

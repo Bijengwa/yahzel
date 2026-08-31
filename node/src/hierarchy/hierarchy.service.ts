@@ -1,7 +1,4 @@
-import {
-  findMembership,
-  findOrganisationById,
-} from "../organisation/organisation.repository.js";
+import { requireStructureCapability } from "../organisation/organisation.service.js";
 import type { PositionRecord } from "./hierarchy.record.js";
 import {
   createPosition,
@@ -62,31 +59,17 @@ export type PublicPosition = ReturnType<typeof publicPosition>;
  * plain member needs to see yet (Work still uses its own person-to-person
  * visibility, unrelated to this), so there is no reason to expose it more
  * widely before that relationship exists.
+ *
+ * The check itself lives in organisation.service.ts's
+ * requireStructureCapability — this used to be a local copy of the same
+ * logic; it is now the shared STRUCTURE capability so occupancy.service.ts's
+ * OCCUPANCY capability isn't a third independent copy of it.
  */
 async function requireAdminMembership(
   userId: number,
   organisationId: number,
 ): Promise<void> {
-  const organisation = await findOrganisationById(organisationId);
-  const membership = organisation
-    ? await findMembership(organisationId, userId)
-    : undefined;
-
-  if (!organisation || !membership) {
-    throw HierarchyError.field(
-      404,
-      "form",
-      "That organisation could not be found.",
-    );
-  }
-
-  if (membership.status !== "active" || membership.system_role !== "admin") {
-    throw HierarchyError.field(
-      403,
-      "form",
-      "Only an administrator can manage this organisation's hierarchy.",
-    );
-  }
+  await requireStructureCapability(userId, organisationId);
 }
 
 /** Walks up the parent chain from `startId`; true once `targetId` is reached. */

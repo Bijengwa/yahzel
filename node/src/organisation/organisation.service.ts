@@ -273,6 +273,45 @@ function requireAdmin(membership: OrganisationMemberRecord): void {
   }
 }
 
+/**
+ * STRUCTURE capability: create, rename, move or delete positions and
+ * departments — the organisation's own reporting-tree definition.
+ *
+ * OCCUPANCY capability (below): placing, replacing or ending a real
+ * person's occupancy of a position that already exists.
+ *
+ * Yahzel's membership model currently distinguishes exactly one capability
+ * — `system_role === "admin"` — so both resolve to the identical check
+ * today. They are kept as two named exports rather than one shared call, so
+ * a future genuinely distinct capability (its own column, its own rule —
+ * e.g. an HR-only standing that cannot touch the reporting tree, or vice
+ * versa) can replace just one of them without touching every call site that
+ * only needed the other. This is deliberately not a new role/permission
+ * framework; it is the existing admin check, named for where each is used.
+ */
+export async function requireStructureCapability(
+  userId: number,
+  organisationId: number,
+): Promise<OrganisationMemberRecord> {
+  const { membership } = await requireMembership(userId, organisationId);
+
+  requireAdmin(membership);
+
+  return membership;
+}
+
+/** See requireStructureCapability's note — identical rule, kept separate on purpose. */
+export async function requireOccupancyCapability(
+  userId: number,
+  organisationId: number,
+): Promise<OrganisationMemberRecord> {
+  const { membership } = await requireMembership(userId, organisationId);
+
+  requireAdmin(membership);
+
+  return membership;
+}
+
 /* ------------------------------------------------------------------------
    My participation
    --------------------------------------------------------------------- */

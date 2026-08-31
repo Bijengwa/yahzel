@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import { currentUserId } from "../middleware/require-auth.js";
+import { OrganisationError } from "../organisation/organisation.service.js";
 import {
   HierarchyError,
   createHierarchyPosition,
@@ -10,12 +11,16 @@ import {
 } from "./hierarchy.service.js";
 
 /**
- * One place where a thrown error becomes a response. Anything that is not a
- * deliberate `HierarchyError` is logged and answered with a generic
- * message, so database details never reach the browser.
+ * One place where a thrown error becomes a response. `OrganisationError` is
+ * included because requireAdminMembership now delegates to
+ * organisation.service.ts's requireStructureCapability, which throws that
+ * type for the "not a member" / "not an admin" cases — it is not a leak,
+ * it is the authority on authorization surfacing its own error shape.
+ * Anything that is neither is logged and answered with a generic message,
+ * so database details never reach the browser.
  */
 function handleFailure(res: Response, error: unknown, context: string): void {
-  if (error instanceof HierarchyError) {
+  if (error instanceof HierarchyError || error instanceof OrganisationError) {
     res.status(error.status).json({
       message: error.message,
       errors: error.errors,

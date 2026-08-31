@@ -128,3 +128,79 @@ export function deletePosition(
     method: "DELETE",
   });
 }
+
+/* ------------------------------------------------------------------------
+   Occupancy — who occupies which position, and for how long. Mirrors
+   node/src/hierarchy/occupancy.service.ts's publicOccupancy. A position
+   itself never carries this — see the Position type above — so it is
+   always fetched and rendered separately, keyed by positionId.
+   --------------------------------------------------------------------- */
+
+export type Occupancy = {
+  id: number;
+  organisationId: number;
+  positionId: number;
+  /** organisation_members.id — not a Yahzel profile id. */
+  memberId: number;
+  startsAt: string;
+  endsAt: string | null;
+  isActive: boolean;
+};
+
+export function fetchOrganisationOccupancy(
+  organisationId: number,
+): Promise<{ occupancies: Occupancy[] }> {
+  return apiRequest(`/api/hierarchy/${organisationId}/occupancy`);
+}
+
+export function assignOccupant(
+  organisationId: number,
+  positionId: number,
+  memberId: number,
+): Promise<{ message: string; occupancy: Occupancy }> {
+  return apiRequest(
+    `/api/hierarchy/${organisationId}/positions/${positionId}/occupant`,
+    { method: "POST", body: { memberId } },
+  );
+}
+
+/** Ends whoever currently holds the position, and assigns the new person. */
+export function replaceOccupant(
+  organisationId: number,
+  positionId: number,
+  memberId: number,
+): Promise<{ message: string; occupancy: Occupancy }> {
+  return apiRequest(
+    `/api/hierarchy/${organisationId}/positions/${positionId}/occupant`,
+    { method: "PUT", body: { memberId } },
+  );
+}
+
+/** The position becomes vacant. History is kept, never deleted. */
+export function endOccupancy(
+  organisationId: number,
+  positionId: number,
+): Promise<{ message: string; occupancy: Occupancy }> {
+  return apiRequest(
+    `/api/hierarchy/${organisationId}/positions/${positionId}/occupant`,
+    { method: "DELETE" },
+  );
+}
+
+export function fetchPositionOccupancyHistory(
+  organisationId: number,
+  positionId: number,
+): Promise<{ positionId: number; history: Occupancy[] }> {
+  return apiRequest(
+    `/api/hierarchy/${organisationId}/positions/${positionId}/occupancy-history`,
+  );
+}
+
+export function fetchMemberOccupancyHistory(
+  organisationId: number,
+  memberId: number,
+): Promise<{ memberId: number; history: Occupancy[] }> {
+  return apiRequest(
+    `/api/hierarchy/${organisationId}/members/${memberId}/occupancy-history`,
+  );
+}

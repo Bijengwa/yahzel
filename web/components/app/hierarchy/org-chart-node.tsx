@@ -2,6 +2,13 @@ import type { SVGProps } from "react";
 
 import type { Position, PositionNode } from "@/lib/hierarchy";
 
+/** What the node needs to know about who (if anyone) occupies it. */
+export type OccupancyDisplay = {
+  /** null when the position is vacant. */
+  occupantName: string | null;
+  isHeadPosition: boolean;
+};
+
 function Icon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -55,21 +62,51 @@ function NodeAction({
  */
 export function OrgChartNode({
   node,
+  getOccupancy,
   onAddChild,
   onEdit,
   onDelete,
+  onManageOccupant,
 }: {
   node: PositionNode;
+  getOccupancy: (positionId: number) => OccupancyDisplay;
   onAddChild: (parentId: number) => void;
   onEdit: (position: Position) => void;
   onDelete: (position: Position) => void;
+  onManageOccupant: (position: Position) => void;
 }) {
+  const occupancy = getOccupancy(node.id);
+
   return (
     <li>
       <div className="flex w-[9.5rem] flex-col items-center gap-1 rounded-md border border-yz-neutral-300 bg-yz-panel px-3 py-2.5 text-center shadow-sm">
+        {occupancy.isHeadPosition && (
+          <span className="text-[10px] font-bold uppercase tracking-wide text-yz-neutral-500">
+            Organisation Head
+          </span>
+        )}
+
         <span className="line-clamp-2 text-[13px] leading-tight font-semibold text-yz-ink">
           {node.name}
         </span>
+
+        {/* People are never their own tree node — this is a label on the
+            position, not a second node. See occupancy.service.ts: a
+            position's occupant is a fact about the position, not a place in
+            the tree of its own. */}
+        <button
+          type="button"
+          onClick={() => onManageOccupant(node)}
+          className="rounded-sm text-[11.5px] leading-tight text-yz-neutral-600 hover:underline"
+        >
+          {occupancy.occupantName ? (
+            <span className="font-semibold text-yz-ink">
+              {occupancy.occupantName}
+            </span>
+          ) : (
+            <span className="italic text-yz-neutral-500">Vacant</span>
+          )}
+        </button>
 
         <span className="flex items-center gap-0.5">
           <NodeAction label={`Add position under ${node.name}`} onClick={() => onAddChild(node.id)}>
@@ -81,6 +118,16 @@ export function OrgChartNode({
           <NodeAction label={`Edit ${node.name}`} onClick={() => onEdit(node)}>
             <Icon>
               <path d="M10.5 3.5 12.5 5.5 5 13H3v-2Z" />
+            </Icon>
+          </NodeAction>
+
+          <NodeAction
+            label={`Manage who occupies ${node.name}`}
+            onClick={() => onManageOccupant(node)}
+          >
+            <Icon>
+              <path d="M8 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+              <path d="M3.5 13c.5-2.5 2.3-4 4.5-4s4 1.5 4.5 4" />
             </Icon>
           </NodeAction>
 
@@ -102,9 +149,11 @@ export function OrgChartNode({
             <OrgChartNode
               key={child.id}
               node={child}
+              getOccupancy={getOccupancy}
               onAddChild={onAddChild}
               onEdit={onEdit}
               onDelete={onDelete}
+              onManageOccupant={onManageOccupant}
             />
           ))}
         </ul>

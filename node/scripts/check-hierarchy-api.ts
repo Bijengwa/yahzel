@@ -8,7 +8,7 @@ import { db } from "../src/db/knex.js";
  * Start the API first:  npm run dev
  */
 
-const API = "http://localhost:5000";
+const API = process.env.CHECK_API_URL ?? "http://localhost:5000";
 let failures = 0;
 
 function check(label: string, condition: boolean, detail?: unknown) {
@@ -231,6 +231,289 @@ check(
   r.body.positions,
 );
 
+/* ------------------------------------------------------------ occupancy */
+
+const member2 = await makeUser(
+  "Hierarchy Member Two",
+  `hier-member2${stamp}@example.com`,
+);
+await addActiveMember(orgA, founder.token, member2);
+
+// `member` also becomes an active participant of Organisation B, to prove a
+// person can occupy a position in one organisation and a different one in
+// another without the two ever colliding (rules 3/4).
+await addActiveMember(orgB, outsider.token, member);
+
+/** The caller's own organisation_members.id in one organisation. */
+async function myMembershipId(orgId: number, token: string): Promise<number> {
+  const res = await call(`/api/organisations/${orgId}`, json("GET", token));
+  return res.body.membership?.id as number;
+}
+
+const memberIdInA = await myMembershipId(orgA, member.token);
+const member2IdInA = await myMembershipId(orgA, member2.token);
+const founderIdInA = await myMembershipId(orgA, founder.token);
+const memberIdInB = await myMembershipId(orgB, member.token);
+const outsiderIdInB = await myMembershipId(orgB, outsider.token);
+
+// 1. A position can exist vacant.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("GET", founder.token),
+);
+check(
+  "a freshly created position starts vacant",
+  r.status === 200 && r.body.occupant === null,
+  r.body,
+);
+
+// 14. Unauthorized user cannot change occupancy.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("POST", member.token, { memberId: memberIdInA }),
+);
+check("a non-admin member cannot assign an occupant", r.status === 403, r.body);
+
+// 2 & 3. Assign an active organisation member to a vacant position; the
+// position returns its occupant.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("POST", founder.token, { memberId: memberIdInA }),
+);
+check(
+  "an admin can assign an active member to a vacant position",
+  r.status === 201 && r.body.occupancy?.memberId === memberIdInA,
+  r.body,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("GET", founder.token),
+);
+check(
+  "the position now returns its occupant",
+  r.body.occupant?.memberId === memberIdInA && r.body.occupant?.isActive === true,
+  r.body,
+);
+
+// 4. The same person cannot occupy two positions simultaneously in one
+// organisation.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${managerId}/occupant`,
+  json("POST", founder.token, { memberId: memberIdInA }),
+);
+check(
+  "the same person cannot occupy a second position in the same organisation",
+  r.status === 409 && r.body.errors?.[0]?.field === "memberId",
+  r.body,
+);
+
+// 5. The same position cannot have two active occupants.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("POST", founder.token, { memberId: member2IdInA }),
+);
+check(
+  "a position with an active occupant refuses a second assignment",
+  r.status === 409,
+  r.body,
+);
+
+// 6. A person can occupy a position in Organisation A and another position
+// in Organisation B.
+r = await call(
+  `/api/hierarchy/${orgB}/positions/${bRootId}/occupant`,
+  json("POST", outsider.token, { memberId: memberIdInB }),
+);
+check(
+  "the same person can occupy a position in a different organisation",
+  r.status === 201 && r.body.occupancy?.memberId === memberIdInB,
+  r.body,
+);
+
+// 11. Cross-organisation position assignment is rejected.
+r = await call(
+  `/api/hierarchy/${orgB}/positions/${managerId}/occupant`,
+  json("POST", outsider.token, { memberId: memberIdInB }),
+);
+check(
+  "assigning a position that belongs to another organisation is rejected",
+  r.status === 404,
+  r.body,
+);
+
+// 12. Cross-organisation member assignment is rejected.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${managerId}/occupant`,
+  json("POST", founder.token, { memberId: outsiderIdInB }),
+);
+check(
+  "assigning a member id that belongs to another organisation is rejected",
+  r.status === 404 && r.body.errors?.[0]?.field === "memberId",
+  r.body,
+);
+
+// 13. An inactive/non-eligible member cannot be assigned.
+const member3 = await makeUser(
+  "Hierarchy Member Three",
+  `hier-member3${stamp}@example.com`,
+);
+await addActiveMember(orgA, founder.token, member3);
+const member3IdInA = await myMembershipId(orgA, member3.token);
+
+await call(
+  `/api/organisations/${orgA}/members/${member3IdInA}`,
+  json("DELETE", founder.token),
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${managerId}/occupant`,
+  json("POST", founder.token, { memberId: member3IdInA }),
+);
+check(
+  "a concluded (inactive) member cannot be assigned to a position",
+  r.status === 422 && r.body.errors?.[0]?.field === "memberId",
+  r.body,
+);
+
+// 15 & 16. The Head position can be occupied, and it is reflected correctly.
+r = await call(`/api/hierarchy/${orgA}`, json("GET", founder.token));
+check(
+  "the Head position is still the first (earliest-created) root",
+  r.body.positions?.[0]?.id === headId,
+  r.body.positions,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${headId}/occupant`,
+  json("POST", founder.token, { memberId: founderIdInA }),
+);
+check(
+  "the Head position itself can be occupied",
+  r.status === 201 && r.body.occupancy?.memberId === founderIdInA,
+  r.body,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${headId}/occupant`,
+  json("GET", founder.token),
+);
+check(
+  "the Head position correctly reflects its occupant",
+  r.body.occupant?.memberId === founderIdInA,
+  r.body,
+);
+
+// 10. Replace an occupant correctly.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("PUT", founder.token, { memberId: member2IdInA }),
+);
+check(
+  "replacing an occupant swaps them atomically",
+  r.status === 200 && r.body.occupancy?.memberId === member2IdInA,
+  r.body,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("GET", founder.token),
+);
+check(
+  "after a replace, the position shows the new occupant",
+  r.body.occupant?.memberId === member2IdInA,
+  r.body,
+);
+
+// The replaced-out person is free again — proving replace actually ended
+// their old occupancy rather than leaving two active rows behind.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${managerId}/occupant`,
+  json("POST", founder.token, { memberId: memberIdInA }),
+);
+check(
+  "a replaced-out occupant is free to occupy a different position",
+  r.status === 201,
+  r.body,
+);
+
+// 7 & 8. End occupancy; the position becomes vacant.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("DELETE", founder.token),
+);
+check("ending an occupancy succeeds", r.status === 200, r.body);
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("GET", founder.token),
+);
+check(
+  "the position is vacant again after ending its occupancy",
+  r.body.occupant === null,
+  r.body,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupant`,
+  json("DELETE", founder.token),
+);
+check(
+  "ending an already-vacant position's occupancy is rejected",
+  r.status === 409,
+  r.body,
+);
+
+// 9. Historical occupancy remains available.
+r = await call(
+  `/api/hierarchy/${orgA}/positions/${officerId}/occupancy-history`,
+  json("GET", founder.token),
+);
+const officerHistory = r.body.history as
+  | Array<{ memberId: number; endsAt: string | null }>
+  | undefined;
+check(
+  "the position's occupancy history keeps both the original and replaced occupants",
+  officerHistory?.length === 2 &&
+    new Set(officerHistory.map((entry) => entry.memberId)).size === 2,
+  officerHistory,
+);
+check(
+  "every history entry for a now-vacant position has ended",
+  (officerHistory?.every((entry) => entry.endsAt !== null)) ?? false,
+  officerHistory,
+);
+
+r = await call(
+  `/api/hierarchy/${orgA}/members/${memberIdInA}/occupancy-history`,
+  json("GET", founder.token),
+);
+check(
+  "a person's occupancy history spans every position they have held in this organisation",
+  r.body.history?.length === 2,
+  r.body,
+);
+
+// 2 (list). Listing organisation occupancy returns every active occupancy
+// at once.
+r = await call(`/api/hierarchy/${orgA}/occupancy`, json("GET", founder.token));
+check(
+  "listing organisation occupancy returns every currently active occupancy",
+  Array.isArray(r.body.occupancies) &&
+    r.body.occupancies.every((entry: { isActive: boolean }) => entry.isActive),
+  r.body,
+);
+
+// 17. Department membership remains separate from position occupancy —
+// occupancy operations never touch department_members (schema-only on this
+// branch — see migration 011; it has no backend yet at all).
+const departmentMemberRows = await db("department_members").select("*");
+check(
+  "occupancy operations never write to department_members",
+  departmentMemberRows.length === 0,
+  departmentMemberRows,
+);
+
 /* -------------------------------------------------------------- rename */
 
 r = await call(
@@ -353,7 +636,13 @@ check(
 await db("positions").whereIn("organisation_id", [orgA, orgB]).delete();
 await db("organisations").whereIn("id", [orgA, orgB]).delete();
 await db("profiles")
-  .whereIn("id", [founder.id, member.id, outsider.id])
+  .whereIn("id", [
+    founder.id,
+    member.id,
+    outsider.id,
+    member2.id,
+    member3.id,
+  ])
   .delete();
 
 console.log(

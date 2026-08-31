@@ -1,5 +1,5 @@
 import type { Position, PositionNode as PositionNodeType } from "@/lib/hierarchy";
-import { OrgChartNode } from "./org-chart-node";
+import { OrgChartNode, type OccupancyDisplay } from "./org-chart-node";
 
 /**
  * The organisation chart: every root position side by side (an organisation
@@ -11,14 +11,18 @@ import { OrgChartNode } from "./org-chart-node";
  */
 export function OrgChart({
   roots,
+  getOccupancy,
   onAddChild,
   onEdit,
   onDelete,
+  onManageOccupant,
 }: {
   roots: PositionNodeType[];
+  getOccupancy: (positionId: number) => OccupancyDisplay;
   onAddChild: (parentId: number) => void;
   onEdit: (position: Position) => void;
   onDelete: (position: Position) => void;
+  onManageOccupant: (position: Position) => void;
 }) {
   return (
     <div className="overflow-x-auto py-2">
@@ -28,9 +32,11 @@ export function OrgChart({
             <OrgChartNode
               key={root.id}
               node={root}
+              getOccupancy={getOccupancy}
               onAddChild={onAddChild}
               onEdit={onEdit}
               onDelete={onDelete}
+              onManageOccupant={onManageOccupant}
             />
           ))}
         </ul>
