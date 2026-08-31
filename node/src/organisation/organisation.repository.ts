@@ -1,3 +1,5 @@
+import type { Knex } from "knex";
+
 import { db } from "../db/knex.js";
 import { POSITIONS_TABLE } from "../hierarchy/hierarchy.record.js";
 import {
@@ -42,6 +44,7 @@ export async function createOrganisationWithAdmin(input: {
   type: string;
   country: string | null;
   description: string | null;
+  title: string | null;
   createdBy: number;
 }): Promise<{
   organisation: OrganisationRecord;
@@ -74,7 +77,7 @@ export async function createOrganisationWithAdmin(input: {
         participation_type: "member",
         organisation_class: "member",
         designation: "member",
-        title: null,
+        title: input.title,
         status: "active",
         joined_at: trx.fn.now() as unknown as string,
       })
@@ -215,8 +218,9 @@ export async function countActiveMembers(
 export async function updateMembership(
   id: number,
   patch: Partial<OrganisationMemberRecord>,
+  queryable: Knex | Knex.Transaction = db,
 ): Promise<OrganisationMemberRecord> {
-  const [row] = await db<OrganisationMemberRecord>(MEMBERS)
+  const [row] = await queryable<OrganisationMemberRecord>(MEMBERS)
     .where({ id })
     .update({ ...patch, updated_at: db.fn.now() as unknown as string })
     .returning("*");

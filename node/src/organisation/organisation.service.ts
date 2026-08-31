@@ -1,8 +1,11 @@
+import { db } from "../db/knex.js";
 import { findProfileById } from "../profile/profile.repository.js";
 import {
   findUserByEmail,
   findUserByUsername,
 } from "../auth/auth.repository.js";
+import { endOpenOccupanciesForMember } from "../hierarchy/occupancy.repository.js";
+import { deleteDepartmentMembershipsForMember } from "../departments/department.repository.js";
 import { findCountry } from "../shared/countries.js";
 import type { ProfileRecord } from "../db/profile-record.js";
 import type {
@@ -375,15 +378,19 @@ export type RegisterInput = {
   type?: unknown;
   country?: unknown;
   description?: unknown;
+  title?: unknown;
 };
 
 /**
  * Registering an organisation makes the registrant its **Admin** — a Yahzel
  * access role — and nothing else. They are not made the Head: Head is a
  * position inside the Administration class, and the organisation assigns it
- * deliberately afterwards (see updateStanding). Title and participation
- * belong to the person's membership, not to registering the organisation,
- * and are collected later when they are invited or added.
+ * deliberately afterwards (see updateStanding).
+ *
+ * The registrant's own title (what the organisation calls them, e.g.
+ * "Founder & CEO") is optional and, when given, kept verbatim on their
+ * membership. It is a label, never a class, designation or participation —
+ * those remain the organisation's later, deliberate decisions.
  */
 export async function registerOrganisation(
   userId: number,
@@ -395,12 +402,17 @@ export async function registerOrganisation(
   const type = validateOrganisationType(input.type);
   const country = validateOrganisationCountry(input.country);
   const description = validateDescription(input.description);
+  const title = validateTitle(input.title);
 
-  const errors: FieldError[] = [name, type, country, description].flatMap(
-    (result) => (result.ok ? [] : result.errors),
-  );
+  const errors: FieldError[] = [
+    name,
+    type,
+    country,
+    description,
+    title,
+  ].flatMap((result) => (result.ok ? [] : result.errors));
 
-  if (!name.ok || !type.ok || !country.ok || !description.ok) {
+  if (!name.ok || !type.ok || !country.ok || !description.ok || !title.ok) {
     throw new OrganisationError(422, errors);
   }
 
@@ -409,6 +421,7 @@ export async function registerOrganisation(
     type: type.value,
     country: country.value,
     description: description.value,
+    title: title.value,
     createdBy: userId,
   });
 
@@ -688,9 +701,27 @@ export async function concludeMembership(
     }
   }
 
-  const updated = await updateMembership(target.id, {
-    status: "concluded",
-    left_at: new Date().toISOString(),
+  // Concluding a membership is one fact with three consequences, committed
+  // together: the status change, the end of any position the person still
+  // occupies (history preserved — the occupancy row is ended, never deleted),
+  // and their removal from every department roster (department_members keeps
+  // no history, so those rows are deleted; a returning member is re-added
+  // trivially). All-or-nothing, so a person is never left concluded yet still
+  // the active occupant of a position or on a roster.
+  const updated = await db.transaction(async (trx) => {
+    const row = await updateMembership(
+      target.id,
+      {
+        status: "concluded",
+        left_at: new Date().toISOString(),
+      },
+      trx,
+    );
+
+    await endOpenOccupanciesForMember(target.id, trx);
+    await deleteDepartmentMembershipsForMember(target.id, trx);
+
+    return row;
   });
 
   return {

@@ -112,6 +112,25 @@ export async function endOccupancyRow(
 }
 
 /**
+ * Ends every open occupancy a member currently holds — sets `ends_at` on each
+ * row where the member is still the active occupant. History is preserved: the
+ * rows are kept, never deleted. Used when a membership is concluded so the
+ * person no longer occupies any position. Transaction-aware so it can run in
+ * the same transaction as the membership status change.
+ */
+export function endOpenOccupanciesForMember(
+  memberId: number,
+  queryable: Queryable = db,
+): Promise<number> {
+  return queryable<PositionOccupancyRecord>(OCCUPANCIES)
+    .where({ member_id: memberId, ends_at: null })
+    .update({
+      ends_at: db.fn.now(),
+      updated_at: db.fn.now(),
+    } as unknown as Partial<PositionOccupancyRecord>);
+}
+
+/**
  * Runs an assign/replace/end operation in one transaction, so ending the
  * previous occupant and inserting the new one (a "replace") are committed
  * together — never left with one write applied and not the other.

@@ -29,11 +29,17 @@ import {
   type Position,
 } from "@/lib/hierarchy";
 import {
+  fetchDepartments,
+  type DepartmentSummary,
+} from "@/lib/departments";
+import {
   fetchOrganisation,
   fetchOrganisationPeople,
   type Member,
+  type Membership,
   type Organisation,
 } from "@/lib/organisation";
+import { DepartmentsPanel } from "./departments-panel";
 import { OrgChart } from "./org-chart";
 import type { OccupancyDisplay } from "./org-chart-node";
 
@@ -60,11 +66,18 @@ export function HierarchyScreen({
   organisationId: number;
 }) {
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
+  const [membership, setMembership] = useState<Membership | null>(null);
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [occupancies, setOccupancies] = useState<Occupancy[] | null>(null);
   const [members, setMembers] = useState<Member[] | null>(null);
+  const [departments, setDepartments] = useState<DepartmentSummary[] | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
+
+  const [departmentMembersTarget, setDepartmentMembersTarget] =
+    useState<DepartmentSummary | null>(null);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState(EMPTY_FORM);
@@ -90,18 +103,26 @@ export function HierarchyScreen({
 
   const load = useCallback(async () => {
     try {
-      const [orgResult, hierarchyResult, occupancyResult, peopleResult] =
-        await Promise.all([
-          fetchOrganisation(organisationId),
-          fetchHierarchy(organisationId),
-          fetchOrganisationOccupancy(organisationId),
-          fetchOrganisationPeople(organisationId),
-        ]);
+      const [
+        orgResult,
+        hierarchyResult,
+        occupancyResult,
+        peopleResult,
+        departmentsResult,
+      ] = await Promise.all([
+        fetchOrganisation(organisationId),
+        fetchHierarchy(organisationId),
+        fetchOrganisationOccupancy(organisationId),
+        fetchOrganisationPeople(organisationId),
+        fetchDepartments(organisationId),
+      ]);
 
       setOrganisation(orgResult.organisation);
+      setMembership(orgResult.membership);
       setPositions(hierarchyResult.positions);
       setOccupancies(occupancyResult.occupancies);
       setMembers(peopleResult.members);
+      setDepartments(departmentsResult.departments);
       setError(null);
       setForbidden(false);
     } catch (caught) {
@@ -139,6 +160,29 @@ export function HierarchyScreen({
       ),
     [occupancies],
   );
+
+  /**
+   * Which department (if any) each position heads. A department appears in the
+   * chart on its head position's node — its members are seen through the
+   * department, never as tree nodes of their own.
+   */
+  const departmentByHeadPosition = useMemo(
+    () =>
+      new Map(
+        (departments ?? [])
+          .filter((department) => department.headPositionId !== null)
+          .map((department) => [
+            department.headPositionId as number,
+            department,
+          ]),
+      ),
+    [departments],
+  );
+
+  const reloadDepartments = useCallback(async () => {
+    const result = await fetchDepartments(organisationId);
+    setDepartments(result.departments);
+  }, [organisationId]);
 
   /**
    * The organisation's Head is the earliest-created root position — the one
@@ -399,9 +443,11 @@ export function HierarchyScreen({
     );
   }
 
-  if (!positions || !organisation) {
+  if (!positions || !organisation || !departments || !members) {
     return <p className="text-[13px] text-yz-neutral-600">Loading…</p>;
   }
+
+  const isAdmin = membership?.isAdmin ?? false;
 
   return (
     <div className="space-y-3">
@@ -450,13 +496,29 @@ export function HierarchyScreen({
             <OrgChart
               roots={tree}
               getOccupancy={getOccupancy}
+              getDepartment={(positionId) =>
+                departmentByHeadPosition.get(positionId)
+              }
               onAddChild={openAdd}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
               onManageOccupant={(position) => void openOccupancy(position)}
+              onViewDepartment={setDepartmentMembersTarget}
             />
           )}
         </PanelGroup>
+
+        <DepartmentsPanel
+          organisationId={organisationId}
+          departments={departments}
+          positions={positions}
+          members={members}
+          isAdmin={isAdmin}
+          onChanged={reloadDepartments}
+          membersTarget={departmentMembersTarget}
+          onOpenMembers={setDepartmentMembersTarget}
+          onCloseMembers={() => setDepartmentMembersTarget(null)}
+        />
       </Panel>
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add position">

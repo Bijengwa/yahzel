@@ -1,5 +1,6 @@
 import type { SVGProps } from "react";
 
+import type { DepartmentSummary } from "@/lib/departments";
 import type { Position, PositionNode } from "@/lib/hierarchy";
 
 /** What the node needs to know about who (if anyone) occupies it. */
@@ -63,19 +64,25 @@ function NodeAction({
 export function OrgChartNode({
   node,
   getOccupancy,
+  getDepartment,
   onAddChild,
   onEdit,
   onDelete,
   onManageOccupant,
+  onViewDepartment,
 }: {
   node: PositionNode;
   getOccupancy: (positionId: number) => OccupancyDisplay;
+  /** The department this position heads, if any. */
+  getDepartment: (positionId: number) => DepartmentSummary | undefined;
   onAddChild: (parentId: number) => void;
   onEdit: (position: Position) => void;
   onDelete: (position: Position) => void;
   onManageOccupant: (position: Position) => void;
+  onViewDepartment: (department: DepartmentSummary) => void;
 }) {
   const occupancy = getOccupancy(node.id);
+  const department = getDepartment(node.id);
 
   return (
     <li>
@@ -107,6 +114,24 @@ export function OrgChartNode({
             <span className="italic text-yz-neutral-500">Vacant</span>
           )}
         </button>
+
+        {/* The department this position heads, shown ON the position — its
+            members are seen through the department (this chip opens a members
+            view), never as child tree nodes. Distinct from the occupant line
+            and the Organisation Head badge above. */}
+        {department && (
+          <button
+            type="button"
+            onClick={() => onViewDepartment(department)}
+            title={`View ${department.name} members`}
+            className="max-w-full rounded-sm border border-yz-neutral-300 bg-yz-neutral-100 px-1.5 py-0.5 text-[10.5px] leading-tight font-semibold text-yz-neutral-700 transition-colors duration-150 hover:border-yz-ink hover:text-yz-ink"
+          >
+            <span className="line-clamp-1">
+              Dept: {department.name} · {department.memberCount}{" "}
+              {department.memberCount === 1 ? "person" : "people"}
+            </span>
+          </button>
+        )}
 
         <span className="flex items-center gap-0.5">
           <NodeAction label={`Add position under ${node.name}`} onClick={() => onAddChild(node.id)}>
@@ -150,10 +175,12 @@ export function OrgChartNode({
               key={child.id}
               node={child}
               getOccupancy={getOccupancy}
+              getDepartment={getDepartment}
               onAddChild={onAddChild}
               onEdit={onEdit}
               onDelete={onDelete}
               onManageOccupant={onManageOccupant}
+              onViewDepartment={onViewDepartment}
             />
           ))}
         </ul>
