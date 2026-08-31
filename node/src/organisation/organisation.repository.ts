@@ -1,4 +1,5 @@
 import { db } from "../db/knex.js";
+import { POSITIONS_TABLE } from "../hierarchy/hierarchy.record.js";
 import {
   ORGANISATIONS_TABLE,
   ORGANISATION_INVITATIONS_TABLE,
@@ -82,6 +83,17 @@ export async function createOrganisationWithAdmin(input: {
     if (!membership) {
       throw new Error("The membership row was not returned after insert.");
     }
+
+    // Every organisation starts with a root position. This is never a
+    // frontend fake — the hierarchy is empty otherwise, and "Head" is a
+    // sane, renameable default (an organisation can immediately rename it
+    // to "Chief Executive Officer", "President & CEO", "Minister", etc.
+    // through the ordinary position-update API).
+    await trx(POSITIONS_TABLE).insert({
+      organisation_id: organisation.id,
+      name: "Head",
+      parent_position_id: null,
+    });
 
     return { organisation, membership };
   });
