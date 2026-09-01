@@ -6,14 +6,25 @@ import {
   approveReport,
   assign,
   attachToReport,
+  capabilitiesCreate,
+  capabilitiesIndex,
+  capabilitiesInstantiate,
+  capabilitiesUpdate,
   children,
   create,
   editReport,
   index,
   reports,
+  schedulesCreate,
+  schedulesGenerate,
+  schedulesIndex,
   sendBackReport,
   sendReport,
+  settingsShow,
+  settingsUpdate,
   show,
+  stalledIndex,
+  stalledScan,
   update,
 } from "./work.controller.js";
 import { MAX_ATTACHMENT_BYTES } from "./work.storage.js";
@@ -23,6 +34,18 @@ const router = Router();
 // Every route below acts as whoever the bearer token says it is. No handler
 // reads an actor id out of the body or the params.
 router.use(requireAuth);
+
+router.get("/settings", settingsShow);
+router.patch("/settings", settingsUpdate);
+router.get("/capabilities", capabilitiesIndex);
+router.post("/capabilities", capabilitiesCreate);
+router.patch("/capabilities/:id", capabilitiesUpdate);
+router.post("/capabilities/:id/instantiate", capabilitiesInstantiate);
+router.get("/schedules", schedulesIndex);
+router.post("/schedules", schedulesCreate);
+router.post("/schedules/generate", schedulesGenerate);
+router.get("/stalled", stalledIndex);
+router.post("/stalled/scan", stalledScan);
 
 router.get("/", index);
 router.post("/", create);

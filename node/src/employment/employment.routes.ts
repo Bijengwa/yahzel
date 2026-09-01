@@ -8,6 +8,9 @@ import {
   showForMember,
   update,
   updateContractHandler,
+  indexExpiring,
+  scanExpiry,
+  createReviewWork,
 } from "./employment.controller.js";
 
 const router = Router();
@@ -15,6 +18,10 @@ const router = Router();
 // Every route below acts as whoever the bearer token says it is. No handler
 // reads an actor id out of the body or the params.
 router.use(requireAuth);
+
+router.get("/:organisationId/expiring-contracts", indexExpiring);
+router.post("/:organisationId/scan-expiry", scanExpiry);
+router.post("/:organisationId/contracts/:contractId/review-work", createReviewWork);
 
 // The entry point is always through a member — Yahzel has no organisation-wide
 // employment browse; see people-panel.tsx, which opens this from a person's
