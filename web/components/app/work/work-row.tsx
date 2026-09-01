@@ -38,6 +38,7 @@ export function WorkRow({
   const overdue =
     item.dueAt !== null &&
     item.status !== "done" &&
+    item.status !== "cancelled" &&
     // eslint-disable-next-line react-hooks/purity
     new Date(item.dueAt).getTime() < Date.now();
 

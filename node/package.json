@@ -12,6 +12,7 @@
     "check:api": "tsx scripts/check-profile-api.ts",
     "check:org": "tsx scripts/check-organisation-api.ts",
     "check:work": "tsx scripts/check-work-api.ts",
+    "check:work:phase2": "tsx scripts/check-work-phase2-api.ts",
     "check:hierarchy": "tsx scripts/check-hierarchy-api.ts",
     "check:departments": "tsx scripts/check-departments-api.ts",
     "test": "echo \"Error: no test specified\" && exit 1"

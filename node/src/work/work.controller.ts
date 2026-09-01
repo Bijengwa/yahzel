@@ -3,10 +3,18 @@ import type { Request, Response } from "express";
 import { currentUserId } from "../middleware/require-auth.js";
 import {
   WorkError,
+  acceptReport,
+  addAttachment,
   assignWorkItem,
+  createReport,
   createWorkItem,
   getWorkItem,
+  listWorkChildren,
   listWorkItems,
+  listWorkReports,
+  returnReport,
+  submitReport,
+  updateReport,
   updateWorkItem,
 } from "./work.service.js";
 
@@ -38,6 +46,16 @@ function readId(raw: unknown): number {
 
   if (!Number.isInteger(value) || value <= 0) {
     throw WorkError.field(404, "form", "That work item could not be found.");
+  }
+
+  return value;
+}
+
+function readReportId(raw: unknown): number {
+  const value = Number(raw);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw WorkError.field(404, "form", "That report could not be found.");
   }
 
   return value;
@@ -88,5 +106,107 @@ export async function assign(req: Request, res: Response): Promise<void> {
       .json(await assignWorkItem(currentUserId(req), id, req.body ?? {}));
   } catch (error) {
     handleFailure(res, error, "Failed to assign a work item");
+  }
+}
+
+/* --------------------------------------------------------------- children */
+
+export async function children(req: Request, res: Response): Promise<void> {
+  try {
+    const id = readId(req.params.id);
+    res.status(200).json(await listWorkChildren(currentUserId(req), id));
+  } catch (error) {
+    handleFailure(res, error, "Failed to list child work items");
+  }
+}
+
+/* ---------------------------------------------------------------- reports */
+
+export async function reports(req: Request, res: Response): Promise<void> {
+  try {
+    const id = readId(req.params.id);
+    res.status(200).json(await listWorkReports(currentUserId(req), id));
+  } catch (error) {
+    handleFailure(res, error, "Failed to list reports");
+  }
+}
+
+export async function addReport(req: Request, res: Response): Promise<void> {
+  try {
+    const id = readId(req.params.id);
+    res
+      .status(201)
+      .json(await createReport(currentUserId(req), id, req.body ?? {}));
+  } catch (error) {
+    handleFailure(res, error, "Failed to create a report");
+  }
+}
+
+export async function editReport(req: Request, res: Response): Promise<void> {
+  try {
+    const reportId = readReportId(req.params.reportId);
+    res
+      .status(200)
+      .json(await updateReport(currentUserId(req), reportId, req.body ?? {}));
+  } catch (error) {
+    handleFailure(res, error, "Failed to update a report");
+  }
+}
+
+export async function sendReport(req: Request, res: Response): Promise<void> {
+  try {
+    const reportId = readReportId(req.params.reportId);
+    res.status(200).json(await submitReport(currentUserId(req), reportId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to submit a report");
+  }
+}
+
+export async function approveReport(req: Request, res: Response): Promise<void> {
+  try {
+    const reportId = readReportId(req.params.reportId);
+    res.status(200).json(await acceptReport(currentUserId(req), reportId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to accept a report");
+  }
+}
+
+export async function sendBackReport(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const reportId = readReportId(req.params.reportId);
+    res
+      .status(200)
+      .json(await returnReport(currentUserId(req), reportId, req.body ?? {}));
+  } catch (error) {
+    handleFailure(res, error, "Failed to return a report");
+  }
+}
+
+/**
+ * The file arrives as the raw request body with its own content type; the file
+ * name comes on the `fileName` query string. This mirrors the avatar upload —
+ * no multipart parser, no base64 round-trip.
+ */
+export async function attachToReport(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const reportId = readReportId(req.params.reportId);
+
+    const bytes: unknown = req.body;
+
+    const result = await addAttachment(currentUserId(req), reportId, {
+      fileBuffer: Buffer.isBuffer(bytes) ? bytes : Buffer.alloc(0),
+      fileName: String(req.query.fileName ?? req.headers["x-file-name"] ?? ""),
+      contentType: String(req.headers["content-type"] ?? ""),
+    });
+
+    res.status(201).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to attach a file");
   }
 }

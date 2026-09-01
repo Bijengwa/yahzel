@@ -20,6 +20,7 @@ export type NotificationRecord = {
 
   organisation_id: number | null;
   invitation_id: number | null;
+  work_item_id: number | null;
 
   /** Where opening the notification should take the person, if anywhere. */
   action_url: string | null;

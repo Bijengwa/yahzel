@@ -3,22 +3,50 @@ import {
   findOrganisationById,
 } from "../organisation/organisation.repository.js";
 import type { OrganisationMemberRecord } from "../organisation/organisation.record.js";
-import type { WorkAssignmentRecord, WorkItemRecord } from "./work.record.js";
+import { findProjectById } from "../projects/project.repository.js";
+import { findDepartmentById } from "../departments/department.repository.js";
+import { createNotification } from "../notifications/notification.service.js";
+import type {
+  WorkAssignmentRecord,
+  WorkItemRecord,
+  WorkReportAttachmentRecord,
+  WorkReportRecord,
+} from "./work.record.js";
 import {
+  bumpWorkActivity,
   createWorkItemWithAssignment,
+  findReportById,
   findWorkItemById,
+  insertAttachment,
+  insertReport,
   listActiveAssignments,
   listAssignmentsForItem,
+  listAttachmentsForReport,
+  listAttachmentsForReports,
+  listChildWorkItems,
+  listReportsForItem,
   listVisibleWorkItems,
+  findOpenReport,
   reassignWorkItem,
+  transitionReport,
+  updateReportBody,
   updateWorkItem as updateWorkItemRow,
 } from "./work.repository.js";
 import {
+  isAcceptedAttachmentType,
+  MAX_ATTACHMENT_BYTES,
+  deleteAttachment,
+  saveAttachment,
+} from "./work.storage.js";
+import {
+  validateDecisionReason,
   validateDueAt,
   validateExpectedOutput,
   validateInstructions,
+  validateOptionalPositiveId,
   validatePositiveId,
   validateProgress,
+  validateReportBody,
   validateWorkDescription,
   validateWorkStatus,
   validateWorkTitle,
@@ -47,6 +75,9 @@ export class WorkError extends Error {
 const notFound = () =>
   WorkError.field(404, "form", "That work item could not be found.");
 
+const notFoundReport = () =>
+  WorkError.field(404, "form", "That report could not be found.");
+
 const notAllowed = () =>
   WorkError.field(403, "form", "You are not allowed to perform this action.");
 
@@ -64,6 +95,12 @@ function publicWorkItem(record: WorkItemRecord) {
     status: record.status,
     progress: record.progress,
     dueAt: record.due_at,
+    projectId: record.project_id,
+    parentId: record.parent_id,
+    departmentId: record.department_id,
+    lastActivityAt: record.last_activity_at,
+    lastProgressAt: record.last_progress_at,
+    lastReportAt: record.last_report_at,
     createdBy: record.created_by,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
@@ -83,20 +120,50 @@ function publicAssignment(record: WorkAssignmentRecord) {
   };
 }
 
+function publicAttachment(record: WorkReportAttachmentRecord) {
+  return {
+    id: record.id,
+    reportId: record.report_id,
+    workItemId: record.work_item_id,
+    uploadedByProfileId: record.uploaded_by_profile_id,
+    fileName: record.file_name,
+    contentType: record.content_type,
+    byteSize: record.byte_size,
+    url: record.storage_path,
+    createdAt: record.created_at,
+  };
+}
+
+function publicReport(
+  record: WorkReportRecord,
+  attachments: WorkReportAttachmentRecord[],
+) {
+  return {
+    id: record.id,
+    workItemId: record.work_item_id,
+    organisationId: record.organisation_id,
+    authorProfileId: record.author_profile_id,
+    body: record.body,
+    state: record.state,
+    decisionReason: record.decision_reason,
+    reviewedByProfileId: record.reviewed_by_profile_id,
+    submittedAt: record.submitted_at,
+    reviewedAt: record.reviewed_at,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+    attachments: attachments.map(publicAttachment),
+  };
+}
+
 export type PublicWorkItem = ReturnType<typeof publicWorkItem>;
 export type PublicAssignment = ReturnType<typeof publicAssignment>;
+export type PublicReport = ReturnType<typeof publicReport>;
+export type PublicAttachment = ReturnType<typeof publicAttachment>;
 
 /* ------------------------------------------------------------------------
    Access
    --------------------------------------------------------------------- */
 
-/**
- * The caller's membership in an organisation named directly in the request —
- * used only where the organisation itself is the thing being addressed
- * (creating a Work Item). Every other Work operation below is item-centric:
- * see `requireVisibleItem`, which never distinguishes "no such organisation"
- * from "not your Work Item".
- */
 async function requireOrganisationMembership(
   userId: number,
   organisationId: number,
@@ -133,6 +200,20 @@ async function requireAssigneeEligible(
   }
 }
 
+/** Whether a person is an active administrator of an organisation. */
+async function isActiveAdmin(
+  organisationId: number,
+  userId: number,
+): Promise<boolean> {
+  const membership = await findMembership(organisationId, userId);
+
+  return (
+    membership !== undefined &&
+    membership.status === "active" &&
+    membership.system_role === "admin"
+  );
+}
+
 function canView(
   userId: number,
   workItem: WorkItemRecord,
@@ -148,9 +229,8 @@ function canView(
 
 /**
  * Loads a Work Item with its full assignment history and checks visibility
- * in one place, since every read and write below needs exactly this. An
- * item outside the caller's visibility is reported as not found — never as
- * forbidden — so its existence is never revealed to somebody uninvolved.
+ * in one place. An item outside the caller's visibility is reported as not
+ * found — never as forbidden — so its existence is never revealed.
  */
 async function requireVisibleItem(
   userId: number,
@@ -171,6 +251,153 @@ async function requireVisibleItem(
   return { workItem, assignments };
 }
 
+/** Loads a report with its Work Item, checking the caller may see the item. */
+async function requireVisibleReport(
+  userId: number,
+  reportId: number,
+): Promise<{
+  report: WorkReportRecord;
+  workItem: WorkItemRecord;
+  assignments: WorkAssignmentRecord[];
+}> {
+  const report = await findReportById(reportId);
+
+  if (!report) {
+    throw notFoundReport();
+  }
+
+  const workItem = await findWorkItemById(report.work_item_id);
+
+  if (!workItem) {
+    throw notFoundReport();
+  }
+
+  const assignments = await listAssignmentsForItem(workItem.id);
+
+  if (!canView(userId, workItem, assignments)) {
+    throw notFoundReport();
+  }
+
+  return { report, workItem, assignments };
+}
+
+/**
+ * The reviewer of a report is the Work Item's creator or an active admin of
+ * its organisation — the two people who may accept or return work.
+ */
+async function requireReviewer(
+  userId: number,
+  workItem: WorkItemRecord,
+): Promise<void> {
+  if (workItem.created_by === userId) {
+    return;
+  }
+
+  if (await isActiveAdmin(workItem.organisation_id, userId)) {
+    return;
+  }
+
+  throw notAllowed();
+}
+
+/* ------------------------------------------------------------------------
+   Same-organisation resolution of the optional Phase 2 links
+   --------------------------------------------------------------------- */
+
+async function resolveProject(
+  organisationId: number,
+  raw: unknown,
+): Promise<number | null> {
+  const projectId = validateOptionalPositiveId(raw, "projectId");
+
+  if (!projectId.ok) {
+    throw new WorkError(422, projectId.errors);
+  }
+
+  if (projectId.value === null) {
+    return null;
+  }
+
+  const project = await findProjectById(projectId.value);
+
+  if (!project || project.organisation_id !== organisationId) {
+    throw WorkError.field(
+      422,
+      "projectId",
+      "That project could not be found in this organisation.",
+    );
+  }
+
+  return project.id;
+}
+
+async function resolveDepartment(
+  organisationId: number,
+  raw: unknown,
+): Promise<number | null> {
+  const departmentId = validateOptionalPositiveId(raw, "departmentId");
+
+  if (!departmentId.ok) {
+    throw new WorkError(422, departmentId.errors);
+  }
+
+  if (departmentId.value === null) {
+    return null;
+  }
+
+  const department = await findDepartmentById(departmentId.value);
+
+  if (!department || department.organisation_id !== organisationId) {
+    throw WorkError.field(
+      422,
+      "departmentId",
+      "That department could not be found in this organisation.",
+    );
+  }
+
+  return department.id;
+}
+
+/**
+ * Resolves an optional parent Work Item, enforcing one level of nesting: the
+ * parent must be in the same organisation and must NOT itself be a child
+ * (its own parent_id must be null). A child of a child is refused.
+ */
+async function resolveParent(
+  organisationId: number,
+  raw: unknown,
+): Promise<number | null> {
+  const parentId = validateOptionalPositiveId(raw, "parentId");
+
+  if (!parentId.ok) {
+    throw new WorkError(422, parentId.errors);
+  }
+
+  if (parentId.value === null) {
+    return null;
+  }
+
+  const parent = await findWorkItemById(parentId.value);
+
+  if (!parent || parent.organisation_id !== organisationId) {
+    throw WorkError.field(
+      422,
+      "parentId",
+      "That parent work item could not be found in this organisation.",
+    );
+  }
+
+  if (parent.parent_id !== null) {
+    throw WorkError.field(
+      422,
+      "parentId",
+      "Work can only be nested one level deep — this item is already a child.",
+    );
+  }
+
+  return parent.id;
+}
+
 /* ------------------------------------------------------------------------
    Create
    --------------------------------------------------------------------- */
@@ -182,6 +409,9 @@ export type CreateWorkInput = {
   expectedOutput?: unknown;
   dueAt?: unknown;
   assigneeProfileId?: unknown;
+  projectId?: unknown;
+  parentId?: unknown;
+  departmentId?: unknown;
 };
 
 export async function createWorkItem(userId: number, input: CreateWorkInput) {
@@ -220,15 +450,40 @@ export async function createWorkItem(userId: number, input: CreateWorkInput) {
   await requireOrganisationMembership(userId, organisationId.value);
   await requireAssigneeEligible(organisationId.value, assigneeProfileId.value);
 
+  // Each optional link must belong to the same organisation; a parent must be
+  // a top-level item (one level of nesting only).
+  const projectId = await resolveProject(organisationId.value, input.projectId);
+  const departmentId = await resolveDepartment(
+    organisationId.value,
+    input.departmentId,
+  );
+  const parentId = await resolveParent(organisationId.value, input.parentId);
+
   const { workItem, assignment } = await createWorkItemWithAssignment({
     organisationId: organisationId.value,
     title: title.value,
     description: description.value,
     expectedOutput: expectedOutput.value,
     dueAt: dueAt.value,
+    projectId,
+    departmentId,
+    parentId,
     createdBy: userId,
     assigneeProfileId: assigneeProfileId.value,
   });
+
+  // Being assigned work is worth a heads-up — unless you assigned it to
+  // yourself, in which case you already know.
+  if (assigneeProfileId.value !== userId) {
+    await createNotification({
+      recipientProfileId: assigneeProfileId.value,
+      type: "work.assigned",
+      message: `You have been assigned "${workItem.title}".`,
+      organisationId: workItem.organisation_id,
+      workItemId: workItem.id,
+      actionUrl: `/work/${workItem.id}`,
+    });
+  }
 
   return {
     message: `${workItem.title} has been created.`,
@@ -255,15 +510,47 @@ export async function listWorkItems(userId: number) {
   };
 }
 
+async function reportsWithAttachments(
+  workItemId: number,
+): Promise<PublicReport[]> {
+  const reports = await listReportsForItem(workItemId);
+  const attachments = await listAttachmentsForReports(
+    reports.map((report) => report.id),
+  );
+
+  return reports.map((report) =>
+    publicReport(report, attachments.get(report.id) ?? []),
+  );
+}
+
 export async function getWorkItem(userId: number, workItemId: number) {
   const { workItem, assignments } = await requireVisibleItem(userId, workItemId);
   const active = assignments.find((row) => row.status === "active") ?? null;
+
+  const children = await listChildWorkItems(workItem.id, workItem.organisation_id);
+  const reports = await reportsWithAttachments(workItem.id);
 
   return {
     workItem: publicWorkItem(workItem),
     activeAssignment: active ? publicAssignment(active) : null,
     assignmentHistory: assignments.map(publicAssignment),
+    children: children.map(publicWorkItem),
+    reports,
   };
+}
+
+export async function listWorkChildren(userId: number, workItemId: number) {
+  const { workItem } = await requireVisibleItem(userId, workItemId);
+
+  const children = await listChildWorkItems(workItem.id, workItem.organisation_id);
+
+  return { children: children.map(publicWorkItem) };
+}
+
+export async function listWorkReports(userId: number, workItemId: number) {
+  const { workItem } = await requireVisibleItem(userId, workItemId);
+
+  return { reports: await reportsWithAttachments(workItem.id) };
 }
 
 /* ------------------------------------------------------------------------
@@ -287,8 +574,6 @@ export async function updateWorkItem(
   const { workItem, assignments } = await requireVisibleItem(userId, workItemId);
   const active = assignments.find((row) => row.status === "active");
 
-  // W0 has no hierarchy: the two people who may edit a Work Item are the
-  // one who created it and the one it is currently assigned to.
   const canEdit =
     workItem.created_by === userId ||
     (active !== undefined && active.assignee_profile_id === userId);
@@ -348,11 +633,9 @@ export async function updateWorkItem(
   }
 
   // "done" and 100% progress are the same idea seen from two directions.
-  // Whichever one the caller did not explicitly set in this request is
-  // brought into line with the one they did, so the pair is never left
-  // contradicting itself. If the caller explicitly sets both to
-  // conflicting values in the same request, that explicit choice is kept
-  // as-is — W0 normalizes defaults, it does not run a workflow engine.
+  // Whichever one the caller did not explicitly set is brought into line with
+  // the one they did — W0 normalizes defaults, it does not run a workflow
+  // engine.
   let finalStatus = status.value;
   let finalProgress = progress.value;
 
@@ -370,6 +653,8 @@ export async function updateWorkItem(
     finalStatus = "done";
   }
 
+  const progressChanged = finalProgress !== workItem.progress;
+
   const updated = await updateWorkItemRow(workItem.id, {
     title: title.value,
     description: description.value,
@@ -377,6 +662,8 @@ export async function updateWorkItem(
     due_at: dueAt.value,
     status: finalStatus,
     progress: finalProgress,
+    last_activity_at: new Date().toISOString(),
+    ...(progressChanged ? { last_progress_at: new Date().toISOString() } : {}),
   });
 
   return {
@@ -401,17 +688,13 @@ export async function assignWorkItem(
 ) {
   const { workItem } = await requireVisibleItem(userId, workItemId);
 
-  // Reassignment authority is the creator, and only the creator: an org
-  // admin with no history on this Work Item has no visibility into it
-  // either, and granting them reassignment power would silently expand
-  // W0's visibility rule through the back door.
-  if (workItem.created_by !== userId) {
-    throw notAllowed();
-  }
+  // The creator may always reassign; an active admin of the organisation may
+  // too. Anyone else (including a past assignee) may not.
+  const allowed =
+    workItem.created_by === userId ||
+    (await isActiveAdmin(workItem.organisation_id, userId));
 
-  const membership = await findMembership(workItem.organisation_id, userId);
-
-  if (!membership || membership.status !== "active") {
+  if (!allowed) {
     throw notAllowed();
   }
 
@@ -438,8 +721,365 @@ export async function assignWorkItem(
     instructions: instructions.value,
   });
 
+  await bumpWorkActivity(workItem.id);
+
+  if (assigneeProfileId.value !== userId) {
+    await createNotification({
+      recipientProfileId: assigneeProfileId.value,
+      type: "work.assigned",
+      message: `You have been assigned "${workItem.title}".`,
+      organisationId: workItem.organisation_id,
+      workItemId: workItem.id,
+      actionUrl: `/work/${workItem.id}`,
+    });
+  }
+
   return {
     message: "This work item has been reassigned.",
     assignment: publicAssignment(assignment),
+  };
+}
+
+/* ------------------------------------------------------------------------
+   Reports
+   --------------------------------------------------------------------- */
+
+function reasonSnippet(reason: string): string {
+  return reason.length > 120 ? `${reason.slice(0, 117)}...` : reason;
+}
+
+export type CreateReportInput = { body?: unknown; submit?: unknown };
+
+export async function createReport(
+  userId: number,
+  workItemId: number,
+  input: CreateReportInput,
+) {
+  const { workItem, assignments } = await requireVisibleItem(userId, workItemId);
+
+  const active = assignments.find((row) => row.status === "active");
+
+  // Only the person the work is currently assigned to reports on it.
+  if (!active || active.assignee_profile_id !== userId) {
+    throw notAllowed();
+  }
+
+  const body = validateReportBody(input.body);
+
+  if (!body.ok) {
+    throw new WorkError(422, body.errors);
+  }
+
+  // At most one open (draft or submitted) report at a time.
+  const open = await findOpenReport(workItem.id);
+
+  if (open) {
+    throw WorkError.field(
+      422,
+      "form",
+      "There is already an open report for this work item.",
+    );
+  }
+
+  const submit = input.submit === true;
+  const submittedAt = submit ? new Date().toISOString() : null;
+
+  const report = await insertReport({
+    workItemId: workItem.id,
+    organisationId: workItem.organisation_id,
+    authorProfileId: userId,
+    body: body.value,
+    state: submit ? "submitted" : "draft",
+    submittedAt,
+  });
+
+  await bumpWorkActivity(workItem.id, { report: true });
+
+  if (submit) {
+    await updateWorkItemRow(workItem.id, {
+      status: "waiting_review",
+      last_activity_at: new Date().toISOString(),
+    });
+
+    if (workItem.created_by !== userId) {
+      await createNotification({
+        recipientProfileId: workItem.created_by,
+        type: "work.report.submitted",
+        message: `A report was submitted for "${workItem.title}".`,
+        organisationId: workItem.organisation_id,
+        workItemId: workItem.id,
+        actionUrl: `/work/${workItem.id}`,
+      });
+    }
+  }
+
+  return {
+    message: submit ? "Your report has been submitted." : "Your draft has been saved.",
+    report: publicReport(report, []),
+  };
+}
+
+export type UpdateReportInput = { body?: unknown };
+
+export async function updateReport(
+  userId: number,
+  reportId: number,
+  input: UpdateReportInput,
+) {
+  const { report, workItem } = await requireVisibleReport(userId, reportId);
+
+  // Only the author may edit, and only while it is still a draft.
+  if (report.author_profile_id !== userId) {
+    throw notAllowed();
+  }
+
+  if (report.state !== "draft") {
+    throw WorkError.field(
+      422,
+      "form",
+      "Only a draft report can be edited.",
+    );
+  }
+
+  const body = validateReportBody(input.body);
+
+  if (!body.ok) {
+    throw new WorkError(422, body.errors);
+  }
+
+  const updated = await updateReportBody(report.id, body.value);
+
+  await bumpWorkActivity(workItem.id, { report: true });
+
+  const attachments = await listAttachmentsForReport(report.id);
+
+  return {
+    message: "Your draft has been saved.",
+    report: publicReport(updated, attachments),
+  };
+}
+
+export async function submitReport(userId: number, reportId: number) {
+  const { report, workItem } = await requireVisibleReport(userId, reportId);
+
+  if (report.author_profile_id !== userId) {
+    throw notAllowed();
+  }
+
+  if (report.state !== "draft") {
+    throw WorkError.field(422, "form", "Only a draft report can be submitted.");
+  }
+
+  const submitted = await transitionReport(report.id, {
+    state: "submitted",
+    submittedAt: new Date().toISOString(),
+  });
+
+  await updateWorkItemRow(workItem.id, {
+    status: "waiting_review",
+    last_activity_at: new Date().toISOString(),
+  });
+
+  await bumpWorkActivity(workItem.id, { report: true });
+
+  if (workItem.created_by !== userId) {
+    await createNotification({
+      recipientProfileId: workItem.created_by,
+      type: "work.report.submitted",
+      message: `A report was submitted for "${workItem.title}".`,
+      organisationId: workItem.organisation_id,
+      workItemId: workItem.id,
+      actionUrl: `/work/${workItem.id}`,
+    });
+  }
+
+  const attachments = await listAttachmentsForReport(report.id);
+
+  return {
+    message: "Your report has been submitted.",
+    report: publicReport(submitted, attachments),
+  };
+}
+
+export async function acceptReport(userId: number, reportId: number) {
+  const { report, workItem } = await requireVisibleReport(userId, reportId);
+
+  await requireReviewer(userId, workItem);
+
+  if (report.state !== "submitted") {
+    throw WorkError.field(
+      422,
+      "form",
+      "Only a submitted report can be accepted.",
+    );
+  }
+
+  const accepted = await transitionReport(report.id, {
+    state: "accepted",
+    reviewedByProfileId: userId,
+    reviewedAt: new Date().toISOString(),
+  });
+
+  await updateWorkItemRow(workItem.id, {
+    status: "done",
+    progress: 100,
+    last_activity_at: new Date().toISOString(),
+    last_progress_at: new Date().toISOString(),
+  });
+
+  if (report.author_profile_id !== userId) {
+    await createNotification({
+      recipientProfileId: report.author_profile_id,
+      type: "work.report.accepted",
+      message: `Your report for "${workItem.title}" was accepted.`,
+      organisationId: workItem.organisation_id,
+      workItemId: workItem.id,
+      actionUrl: `/work/${workItem.id}`,
+    });
+  }
+
+  const attachments = await listAttachmentsForReport(report.id);
+
+  return {
+    message: "The report has been accepted.",
+    report: publicReport(accepted, attachments),
+  };
+}
+
+export type ReturnReportInput = { reason?: unknown };
+
+export async function returnReport(
+  userId: number,
+  reportId: number,
+  input: ReturnReportInput,
+) {
+  const { report, workItem } = await requireVisibleReport(userId, reportId);
+
+  await requireReviewer(userId, workItem);
+
+  if (report.state !== "submitted") {
+    throw WorkError.field(
+      422,
+      "form",
+      "Only a submitted report can be returned.",
+    );
+  }
+
+  const reason = validateDecisionReason(input.reason);
+
+  if (!reason.ok) {
+    throw new WorkError(422, reason.errors);
+  }
+
+  // The returned row is preserved with its reason; the author may later start
+  // a brand new report. History is never destroyed.
+  const returned = await transitionReport(report.id, {
+    state: "returned",
+    reviewedByProfileId: userId,
+    reviewedAt: new Date().toISOString(),
+    decisionReason: reason.value,
+  });
+
+  await updateWorkItemRow(workItem.id, {
+    status: "in_progress",
+    last_activity_at: new Date().toISOString(),
+  });
+
+  if (report.author_profile_id !== userId) {
+    await createNotification({
+      recipientProfileId: report.author_profile_id,
+      type: "work.report.returned",
+      message: `Your report for "${workItem.title}" was returned: ${reasonSnippet(
+        reason.value,
+      )}`,
+      organisationId: workItem.organisation_id,
+      workItemId: workItem.id,
+      actionUrl: `/work/${workItem.id}`,
+    });
+  }
+
+  const attachments = await listAttachmentsForReport(report.id);
+
+  return {
+    message: "The report has been returned.",
+    report: publicReport(returned, attachments),
+  };
+}
+
+/* ------------------------------------------------------------------------
+   Report attachments
+   --------------------------------------------------------------------- */
+
+export type AddAttachmentInput = {
+  fileBuffer: Buffer;
+  fileName: string;
+  contentType: string;
+};
+
+export async function addAttachment(
+  userId: number,
+  reportId: number,
+  input: AddAttachmentInput,
+) {
+  const { report, workItem } = await requireVisibleReport(userId, reportId);
+
+  // Evidence is tied to a specific submission: only the author, and only while
+  // the report is still open (draft or submitted), may attach to it.
+  if (report.author_profile_id !== userId) {
+    throw notAllowed();
+  }
+
+  if (report.state !== "draft" && report.state !== "submitted") {
+    throw WorkError.field(
+      422,
+      "form",
+      "Evidence can only be attached to an open report.",
+    );
+  }
+
+  if (!isAcceptedAttachmentType(input.contentType)) {
+    throw WorkError.field(
+      415,
+      "file",
+      "That file type is not supported.",
+    );
+  }
+
+  if (!Buffer.isBuffer(input.fileBuffer) || input.fileBuffer.length === 0) {
+    throw WorkError.field(400, "file", "No file was received.");
+  }
+
+  if (input.fileBuffer.length > MAX_ATTACHMENT_BYTES) {
+    throw WorkError.field(413, "file", "Files must be 15 MB or smaller.");
+  }
+
+  const fileName = String(input.fileName || "attachment").slice(0, 255);
+
+  const storagePath = await saveAttachment(input.fileBuffer, input.contentType);
+
+  let row: WorkReportAttachmentRecord;
+
+  try {
+    row = await insertAttachment({
+      reportId: report.id,
+      workItemId: workItem.id,
+      organisationId: workItem.organisation_id,
+      uploadedByProfileId: userId,
+      fileName,
+      contentType: input.contentType.split(";")[0]?.trim() ?? input.contentType,
+      byteSize: input.fileBuffer.length,
+      storagePath,
+    });
+  } catch (error) {
+    // The row could not be written — do not leave the file orphaned on disk.
+    await deleteAttachment(storagePath);
+    throw error;
+  }
+
+  await bumpWorkActivity(workItem.id, { report: true });
+
+  return {
+    message: "The file has been attached.",
+    attachment: publicAttachment(row),
   };
 }

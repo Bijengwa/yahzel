@@ -8,6 +8,10 @@ export const TITLE_MAX_LENGTH = 200;
 export const DESCRIPTION_MAX_LENGTH = 5000;
 export const EXPECTED_OUTPUT_MAX_LENGTH = 5000;
 export const INSTRUCTIONS_MAX_LENGTH = 2000;
+export const REPORT_BODY_MIN_LENGTH = 1;
+export const REPORT_BODY_MAX_LENGTH = 10000;
+export const DECISION_REASON_MIN_LENGTH = 1;
+export const DECISION_REASON_MAX_LENGTH = 2000;
 
 export function validateWorkTitle(raw: unknown): Validated<string> {
   const value = String(raw ?? "").trim().replace(/\s+/g, " ");
@@ -128,6 +132,76 @@ export function validatePositiveId(
     return {
       ok: false,
       errors: [{ field, message: "That value is not valid." }],
+    };
+  }
+
+  return { ok: true, value };
+}
+
+/**
+ * projectId / parentId / departmentId on create — every one optional and
+ * clearable: null, undefined and "" all mean "no link". Anything else must be
+ * a positive id, checked against the organisation by the service.
+ */
+export function validateOptionalPositiveId(
+  raw: unknown,
+  field: string,
+): Validated<number | null> {
+  if (raw === null || raw === undefined || raw === "") {
+    return { ok: true, value: null };
+  }
+
+  return validatePositiveId(raw, field);
+}
+
+/** The text body of a report — required, non-empty, capped. */
+export function validateReportBody(raw: unknown): Validated<string> {
+  const value = String(raw ?? "").trim();
+
+  if (value.length < REPORT_BODY_MIN_LENGTH) {
+    return {
+      ok: false,
+      errors: [{ field: "body", message: "Write the report before saving it." }],
+    };
+  }
+
+  if (value.length > REPORT_BODY_MAX_LENGTH) {
+    return {
+      ok: false,
+      errors: [
+        {
+          field: "body",
+          message: `Keep this under ${REPORT_BODY_MAX_LENGTH} characters.`,
+        },
+      ],
+    };
+  }
+
+  return { ok: true, value };
+}
+
+/** The reason a report is returned — required, non-empty, capped. */
+export function validateDecisionReason(raw: unknown): Validated<string> {
+  const value = String(raw ?? "").trim();
+
+  if (value.length < DECISION_REASON_MIN_LENGTH) {
+    return {
+      ok: false,
+      errors: [
+        { field: "reason", message: "Say why this report is being returned." },
+      ],
+    };
+  }
+
+  if (value.length > DECISION_REASON_MAX_LENGTH) {
+    return {
+      ok: false,
+      errors: [
+        {
+          field: "reason",
+          message: `Keep this under ${DECISION_REASON_MAX_LENGTH} characters.`,
+        },
+      ],
     };
   }
 

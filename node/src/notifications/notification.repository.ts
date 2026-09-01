@@ -12,6 +12,7 @@ export async function insertNotification(input: {
   message: string;
   organisationId?: number | null;
   invitationId?: number | null;
+  workItemId?: number | null;
   actionUrl?: string | null;
 }): Promise<NotificationRecord> {
   const [row] = await db<NotificationRecord>(NOTIFICATIONS)
@@ -21,6 +22,7 @@ export async function insertNotification(input: {
       message: input.message,
       organisation_id: input.organisationId ?? null,
       invitation_id: input.invitationId ?? null,
+      work_item_id: input.workItemId ?? null,
       action_url: input.actionUrl ?? null,
     })
     .returning("*");

@@ -15,6 +15,7 @@ function publicNotification(record: NotificationRecord) {
     message: record.message,
     organisationId: record.organisation_id,
     invitationId: record.invitation_id,
+    workItemId: record.work_item_id,
     actionUrl: record.action_url,
     read: record.read_at !== null,
     createdAt: record.created_at,
@@ -39,6 +40,7 @@ export async function createNotification(input: {
   message: string;
   organisationId?: number | null;
   invitationId?: number | null;
+  workItemId?: number | null;
   actionUrl?: string | null;
 }): Promise<PublicNotification> {
   const row = await insertNotification(input);
