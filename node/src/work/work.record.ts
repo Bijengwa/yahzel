@@ -63,6 +63,13 @@ export type WorkItemRecord = {
   last_progress_at: string | null;
   last_report_at: string | null;
 
+  source_capability_id: number | null;
+  source_schedule_id: number | null;
+  occurrence_key: string | null;
+  contract_id: number | null;
+  employment_record_id: number | null;
+  blocked_reason: string | null;
+
   created_by: number;
   created_at: string;
   updated_at: string;
