@@ -7,6 +7,7 @@ import {
   ORGANISATION_TYPES,
   PARTICIPATION_TYPES,
 } from "./organisation/organisation.types.js";
+import { CONTRACT_TYPES, EMPLOYMENT_STATUSES } from "./employment/employment.types.js";
 
 /**
  * Static reference data the web client needs to render pickers. It lives here
@@ -33,6 +34,19 @@ router.get("/organisation-types", (_req, res) => {
     participationTypes: PARTICIPATION_TYPES,
     organisationClasses: ORGANISATION_CLASSES,
     designations: DESIGNATIONS,
+  });
+});
+
+/**
+ * The employment vocabulary: contract types, plus the employment statuses
+ * (deliberately the same three organisation_members already uses — see
+ * employment.types.ts).
+ */
+router.get("/employment-types", (_req, res) => {
+  res.set("Cache-Control", "public, max-age=86400");
+  res.status(200).json({
+    contractTypes: CONTRACT_TYPES,
+    employmentStatuses: EMPLOYMENT_STATUSES,
   });
 });
 

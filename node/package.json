@@ -15,6 +15,7 @@
     "check:work:phase2": "tsx scripts/check-work-phase2-api.ts",
     "check:hierarchy": "tsx scripts/check-hierarchy-api.ts",
     "check:departments": "tsx scripts/check-departments-api.ts",
+    "check:employment": "tsx scripts/check-employment-api.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

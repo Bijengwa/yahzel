@@ -57,6 +57,15 @@ async function makeUser(fullName: string, email: string) {
 }
 
 const stamp = Date.now();
+
+// Stamp-derived, not a fixed literal: a hardcoded test number can collide
+// with a real developer's own dev-database account using the same number,
+// which is exactly what made this script crash on an unrelated, pre-existing
+// local dev row rather than exercising the phone-number logic being tested.
+const testPhoneSuffix = String(stamp).slice(-9);
+const testPhone = `+255${testPhoneSuffix}`;
+const wrongCountryPhone = `+254${testPhoneSuffix}`;
+
 const a = await makeUser("Amina Test", `amina${stamp}@example.com`);
 const b = await makeUser("Baraka Test", `baraka${stamp}@example.com`);
 
@@ -127,7 +136,7 @@ check(
 
 r = await call(
   "/api/profile",
-  json("PATCH", a.token, { phoneNumber: "+254712345678" }),
+  json("PATCH", a.token, { phoneNumber: wrongCountryPhone }),
 );
 check(
   "phone from a different country is rejected",
@@ -137,11 +146,11 @@ check(
 
 r = await call(
   "/api/profile",
-  json("PATCH", a.token, { phoneNumber: "+255712345678" }),
+  json("PATCH", a.token, { phoneNumber: testPhone }),
 );
 check(
   "matching phone saved as unverified",
-  r.body.profile.phoneNumber === "+255712345678" &&
+  r.body.profile.phoneNumber === testPhone &&
     r.body.profile.phoneVerified === false,
   r.body.profile,
 );
@@ -156,7 +165,7 @@ check(
 
 r = await call(
   "/api/profile",
-  json("PATCH", b.token, { country: "TZ", phoneNumber: "+255712345678" }),
+  json("PATCH", b.token, { country: "TZ", phoneNumber: testPhone }),
 );
 check(
   "duplicate phone rejected with a field error",

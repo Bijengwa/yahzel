@@ -6,6 +6,7 @@ import {
 } from "../auth/auth.repository.js";
 import { endOpenOccupanciesForMember } from "../hierarchy/occupancy.repository.js";
 import { deleteDepartmentMembershipsForMember } from "../departments/department.repository.js";
+import { endOpenEmploymentForMember } from "../employment/employment.repository.js";
 import { findCountry } from "../shared/countries.js";
 import type { ProfileRecord } from "../db/profile-record.js";
 import type {
@@ -701,13 +702,16 @@ export async function concludeMembership(
     }
   }
 
-  // Concluding a membership is one fact with three consequences, committed
+  // Concluding a membership is one fact with four consequences, committed
   // together: the status change, the end of any position the person still
   // occupies (history preserved — the occupancy row is ended, never deleted),
-  // and their removal from every department roster (department_members keeps
-  // no history, so those rows are deleted; a returning member is re-added
-  // trivially). All-or-nothing, so a person is never left concluded yet still
-  // the active occupant of a position or on a roster.
+  // their removal from every department roster (department_members keeps no
+  // history, so those rows are deleted; a returning member is re-added
+  // trivially), and the close of any open employment record and active
+  // contract (history preserved — see employment.repository.ts's
+  // endOpenEmploymentForMember). All-or-nothing, so a person is never left
+  // concluded yet still the active occupant of a position, on a roster, or
+  // "currently employed".
   const updated = await db.transaction(async (trx) => {
     const row = await updateMembership(
       target.id,
@@ -720,6 +724,7 @@ export async function concludeMembership(
 
     await endOpenOccupanciesForMember(target.id, trx);
     await deleteDepartmentMembershipsForMember(target.id, trx);
+    await endOpenEmploymentForMember(target.id, trx);
 
     return row;
   });

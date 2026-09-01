@@ -3,6 +3,7 @@ import express from "express";
 
 import authRoutes from "./auth/auth.routes.js";
 import departmentRoutes from "./departments/department.routes.js";
+import employmentRoutes from "./employment/employment.routes.js";
 import hierarchyRoutes from "./hierarchy/hierarchy.routes.js";
 import notificationRoutes from "./notifications/notification.routes.js";
 import organisationRoutes from "./organisation/organisation.routes.js";
@@ -28,6 +29,7 @@ app.use("/api/work", workRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/hierarchy", hierarchyRoutes);
 app.use("/api/departments", departmentRoutes);
+app.use("/api/employment", employmentRoutes);
 app.use("/api/reference", referenceRoutes);
 
 export default app;

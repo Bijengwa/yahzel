@@ -19,6 +19,7 @@ import {
   type StandingInput,
 } from "@/lib/organisation";
 import { Avatar } from "../profile/avatar";
+import { EmploymentPanel } from "./employment-panel";
 import { MembershipStatusPill } from "./organisation-card";
 import { StandingPills } from "./standing-pills";
 import { useOrganisationVocabulary } from "./use-organisation-types";
@@ -66,6 +67,7 @@ export function PeoplePanel({
   const [invite, setInvite] = useState(EMPTY_INVITE);
   const [busyMember, setBusyMember] = useState<number | null>(null);
   const [editing, setEditing] = useState<Member | null>(null);
+  const [employmentTarget, setEmploymentTarget] = useState<Member | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -220,6 +222,17 @@ export function PeoplePanel({
               onClick={() => setEditing(member)}
             >
               Standing
+            </Button>
+          )}
+
+          {canAdminister && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busyMember === member.id}
+              onClick={() => setEmploymentTarget(member)}
+            >
+              Employment
             </Button>
           )}
 
@@ -471,6 +484,15 @@ export function PeoplePanel({
             ))}
           </ul>
         </PanelGroup>
+      )}
+
+      {employmentTarget && (
+        <EmploymentPanel
+          organisationId={organisationId}
+          member={employmentTarget}
+          canAdminister={canAdminister}
+          onClose={() => setEmploymentTarget(null)}
+        />
       )}
     </>
   );

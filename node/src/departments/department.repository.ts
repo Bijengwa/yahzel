@@ -179,6 +179,27 @@ export function deleteDepartmentMember(
 }
 
 /**
+ * Every department one member currently belongs to — the reverse of
+ * listDepartmentMembers. Used by the employment record to display "which
+ * department is this person in" without inventing a second hierarchy: it
+ * reads the same department_members roster the Departments panel already
+ * writes to.
+ */
+export function listDepartmentsForMember(
+  memberId: number,
+): Promise<DepartmentRecord[]> {
+  return db<DepartmentRecord>(DEPARTMENTS)
+    .join(
+      DEPARTMENT_MEMBERS,
+      `${DEPARTMENT_MEMBERS}.department_id`,
+      `${DEPARTMENTS}.id`,
+    )
+    .where(`${DEPARTMENT_MEMBERS}.member_id`, memberId)
+    .select(`${DEPARTMENTS}.*`)
+    .orderBy(`${DEPARTMENTS}.name`, "asc");
+}
+
+/**
  * Removes a member from every department they are in. Used when a membership
  * is concluded: department_members keeps no history, so the row is deleted (a
  * returning member is trivially re-added). Scoped to the member — member_id
