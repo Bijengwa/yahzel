@@ -117,6 +117,33 @@ export function listOpenWorkItemsForOrganisation(
     .orderBy("last_activity_at", "asc");
 }
 
+/**
+ * Every Work Item linked to a project, regardless of status — the raw set
+ * Phase 5's project health/summary derives its counts from. Project is a
+ * coordination layer, never a second store of what Work exists.
+ */
+export function listWorkItemsForProject(
+  projectId: number,
+): Promise<WorkItemRecord[]> {
+  return db<WorkItemRecord>(ITEMS)
+    .where({ project_id: projectId })
+    .orderBy("created_at", "desc");
+}
+
+/**
+ * Sets (or clears) which project a Work Item belongs to. A narrow, single-
+ * purpose write so Project's own link/unlink authorization can move this one
+ * column without going through Work's update path (and its creator/assignee
+ * gate) — the containment relationship is the Project's to manage, execution
+ * fields (status, progress, reports) stay Work's own.
+ */
+export function setWorkItemProject(
+  id: number,
+  projectId: number | null,
+): Promise<WorkItemRecord> {
+  return updateWorkItem(id, { project_id: projectId });
+}
+
 /** Direct children of a Work Item, scoped to the same organisation. */
 export function listChildWorkItems(
   parentId: number,

@@ -117,8 +117,11 @@ r = await call(
   json("POST", founder.token, { name: `Project Alpha ${stamp}` }),
 );
 check(
+  // Phase 5 grows the vocabulary to planned|active|paused|completed|cancelled
+  // and moves the default to "planned" — the natural starting point, the
+  // same way Work's own default is "not_started" rather than "in_progress".
   "a member can create a project",
-  r.status === 201 && r.body.project?.status === "active",
+  r.status === 201 && r.body.project?.status === "planned",
   r.body,
 );
 const projectA = r.body.project?.id as number;

@@ -37,6 +37,20 @@ export const NAV_ITEMS = [
     ),
   },
   {
+    /**
+     * A folder holding several documents — a container around a group of
+     * Work, distinct from Work's own briefcase and Organisation's building.
+     */
+    href: "/projects",
+    label: "Projects",
+    icon: (
+      <Icon>
+        <path d="M3 6.5h5l1.5 2H17v8H3z" />
+        <path d="M3 6.5V16" />
+      </Icon>
+    ),
+  },
+  {
     href: "/hiring",
     label: "Hiring",
     icon: (

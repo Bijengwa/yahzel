@@ -674,7 +674,17 @@ export function WorkDetailScreen({ workItemId }: { workItemId: number }) {
           <PanelGroup title="Links">
             <dl>
               {projectName !== null && (
-                <ReadRow label="Project" value={projectName} />
+                <ReadRow
+                  label="Project"
+                  value={
+                    <Link
+                      href={`/projects/${workItem.projectId}?organisationId=${workItem.organisationId}`}
+                      className="text-yz-accent hover:underline"
+                    >
+                      {projectName}
+                    </Link>
+                  }
+                />
               )}
 
               {departmentName !== null && (

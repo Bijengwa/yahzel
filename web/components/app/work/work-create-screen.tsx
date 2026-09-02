@@ -53,6 +53,8 @@ export function WorkCreateScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const parentParam = searchParams.get("parentId");
+  const projectParam = searchParams.get("projectId");
+  const projectOrgParam = searchParams.get("organisationId");
   const { profile } = useProfile();
 
   const [organisations, setOrganisations] = useState<Participation[] | null>(
@@ -79,6 +81,25 @@ export function WorkCreateScreen() {
         );
 
         setOrganisations(active);
+
+        // A project passed in the URL ("+ New Work" from a Project page)
+        // fixes both the organisation and the project, so the item lands
+        // already linked instead of requiring a second step to attach it.
+        if (projectParam && projectOrgParam) {
+          const projectId = Number(projectParam);
+          const orgId = Number(projectOrgParam);
+
+          if (
+            Number.isInteger(projectId) &&
+            projectId > 0 &&
+            Number.isInteger(orgId) &&
+            orgId > 0
+          ) {
+            setOrganisationId(orgId);
+            setForm((current) => ({ ...current, projectId: String(projectId) }));
+            return;
+          }
+        }
 
         // A parent passed in the URL ("+ Add child work") fixes both the
         // organisation and the parent, so the child lands in the right place.
@@ -114,7 +135,7 @@ export function WorkCreateScreen() {
     }
 
     void load();
-  }, [parentParam]);
+  }, [parentParam, projectParam, projectOrgParam]);
 
   useEffect(() => {
     if (organisationId === null) {

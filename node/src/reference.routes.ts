@@ -14,6 +14,10 @@ import {
   BUILT_IN_CAPABILITIES,
   CADENCES,
 } from "./work/obligation.types.js";
+import {
+  PROJECT_OUTCOME_STATUSES,
+  PROJECT_STATUSES,
+} from "./projects/project.record.js";
 
 /**
  * Static reference data the web client needs to render pickers. It lives here
@@ -70,6 +74,15 @@ router.get("/work-vocabulary", (_req, res) => {
     })),
     cadences: CADENCES,
     builtInCapabilities: BUILT_IN_CAPABILITIES,
+  });
+});
+
+/** Phase 5's own vocabulary: project and outcome status. */
+router.get("/project-vocabulary", (_req, res) => {
+  res.set("Cache-Control", "public, max-age=86400");
+  res.status(200).json({
+    projectStatuses: PROJECT_STATUSES,
+    outcomeStatuses: PROJECT_OUTCOME_STATUSES,
   });
 });
 

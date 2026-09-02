@@ -20,10 +20,44 @@ import { publicWorkItem } from "./work.service.js";
  * Nothing here computes a rating, a score, or a leaderboard — only the
  * inputs a human reviewer needs to decide what to do next.
  */
-type StalledKind = "stalled_blocked" | "overdue" | "stalled_inactive";
+export type StalledKind = "stalled_blocked" | "overdue" | "stalled_inactive";
 
-function dayFloor(millis: number): number {
+export function dayFloor(millis: number): number {
   return Math.max(0, Math.floor(millis / 86_400_000));
+}
+
+/**
+ * The pure classification at the heart of the stalled scan, with no side
+ * effects (no notice written, no notification sent) — so a read-only caller
+ * like Project health can reuse the exact same rule the scan uses without
+ * triggering the scan's own bookkeeping. `now` is a parameter, not `Date.
+ * now()`, so a caller computing several items in one pass shares one instant.
+ */
+export function classifyWorkItem(
+  item: Pick<WorkItemRecord, "status" | "due_at" | "last_activity_at">,
+  settings: { stalled_blocked_days: number; stalled_inactive_days: number },
+  now: number,
+): StalledKind | null {
+  const inactivityDays = dayFloor(now - new Date(item.last_activity_at).getTime());
+  const isOverdue = item.due_at !== null && new Date(item.due_at).getTime() < now;
+  const isStalledBlocked =
+    item.status === "blocked" && inactivityDays >= settings.stalled_blocked_days;
+  const isStalledInactive =
+    item.status !== "blocked" && inactivityDays >= settings.stalled_inactive_days;
+
+  if (isStalledBlocked) {
+    return "stalled_blocked";
+  }
+
+  if (isOverdue) {
+    return "overdue";
+  }
+
+  if (isStalledInactive) {
+    return "stalled_inactive";
+  }
+
+  return null;
 }
 
 function diagnosticMessage(kind: StalledKind, inactivityDays: number): string {
@@ -96,21 +130,7 @@ async function computeAndSync(organisationId: number): Promise<StalledDiagnostic
   for (const item of candidates) {
     const inactivityDays = dayFloor(now - new Date(item.last_activity_at).getTime());
     const ageDays = dayFloor(now - new Date(item.created_at).getTime());
-    const isOverdue = item.due_at !== null && new Date(item.due_at).getTime() < now;
-    const isStalledBlocked =
-      item.status === "blocked" && inactivityDays >= settings.stalled_blocked_days;
-    const isStalledInactive =
-      item.status !== "blocked" && inactivityDays >= settings.stalled_inactive_days;
-
-    let kind: StalledKind | null = null;
-
-    if (isStalledBlocked) {
-      kind = "stalled_blocked";
-    } else if (isOverdue) {
-      kind = "overdue";
-    } else if (isStalledInactive) {
-      kind = "stalled_inactive";
-    }
+    const kind = classifyWorkItem(item, settings, now);
 
     if (!kind) {
       await clearStallNotice(item.id);
