@@ -59,7 +59,7 @@ export class EmploymentError extends Error {
    Serialisation
    --------------------------------------------------------------------- */
 
-function publicEmploymentRecord(record: EmploymentRecordRecord) {
+export function publicEmploymentRecord(record: EmploymentRecordRecord) {
   return {
     id: record.id,
     organisationId: record.organisation_id,
@@ -74,7 +74,7 @@ function publicEmploymentRecord(record: EmploymentRecordRecord) {
   };
 }
 
-function publicContract(record: ContractRecord) {
+export function publicContract(record: ContractRecord) {
   return {
     id: record.id,
     employmentRecordId: record.employment_record_id,

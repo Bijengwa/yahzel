@@ -34,6 +34,14 @@ export type WorkItem = {
   lastProgressAt: string | null;
   /** Set on report activity. */
   lastReportAt: string | null;
+  /** Required while status is "blocked"; cleared otherwise. Phase 4. */
+  blockedReason: string | null;
+  /** Phase 4 — where this Work Item came from, if anywhere. */
+  sourceCapabilityId: number | null;
+  sourceScheduleId: number | null;
+  occurrenceKey: string | null;
+  contractId: number | null;
+  employmentRecordId: number | null;
   createdBy: number;
   createdAt: string;
   updatedAt: string;
@@ -190,6 +198,8 @@ export type UpdateWorkInput = Partial<{
   dueAt: string | null;
   status: WorkStatus;
   progress: number;
+  /** Required when setting status to "blocked"; ignored otherwise. */
+  blockedReason: string | null;
 }>;
 
 export function updateWorkItem(
@@ -295,4 +305,234 @@ export function uploadReportAttachment(
       raw: { body: file, contentType: file.type },
     },
   );
+}
+
+/* ------------------------------------------------------------------------
+   Phase 4 vocabulary — the same lists work.validation.ts / obligation.
+   validation.ts validate against, so the picker and the API never disagree.
+   --------------------------------------------------------------------- */
+
+export type BlockedReasonOption = { value: string; label: string };
+
+export const CADENCES = ["weekly", "monthly", "quarterly", "yearly"] as const;
+export type Cadence = (typeof CADENCES)[number];
+
+export type BuiltInCapabilityPreview = {
+  key: string;
+  name: string;
+  description: string;
+  suggestedTitle: string;
+  defaultAssigneeRule: "caller" | "admin";
+  cadence: string | null;
+};
+
+export function loadWorkVocabulary(): Promise<{
+  blockedReasons: BlockedReasonOption[];
+  cadences: readonly string[];
+  builtInCapabilities: BuiltInCapabilityPreview[];
+}> {
+  return apiRequest("/api/reference/work-vocabulary");
+}
+
+/* ------------------------------------------------------------------------
+   Work settings — the three thresholds an organisation may tune.
+   --------------------------------------------------------------------- */
+
+export type WorkSettings = {
+  organisationId: number;
+  contractNoticeDays: number;
+  stalledInactiveDays: number;
+  stalledBlockedDays: number;
+  updatedAt: string;
+};
+
+export function fetchWorkSettings(
+  organisationId: number,
+): Promise<{ settings: WorkSettings }> {
+  return apiRequest(`/api/work/settings?organisationId=${organisationId}`);
+}
+
+export type UpdateWorkSettingsInput = Partial<{
+  contractNoticeDays: number;
+  stalledInactiveDays: number;
+  stalledBlockedDays: number;
+}>;
+
+export function updateWorkSettings(
+  organisationId: number,
+  input: UpdateWorkSettingsInput,
+): Promise<{ message: string; settings: WorkSettings }> {
+  return apiRequest("/api/work/settings", {
+    method: "PATCH",
+    body: { organisationId, ...input },
+  });
+}
+
+/* ------------------------------------------------------------------------
+   Capabilities — organisation-scoped templates that create ordinary Work.
+   --------------------------------------------------------------------- */
+
+export type Capability = {
+  id: number;
+  organisationId: number;
+  key: string;
+  name: string;
+  description: string | null;
+  suggestedTitle: string;
+  suggestedDescription: string | null;
+  suggestedExpectedOutput: string | null;
+  checklist: string[] | null;
+  defaultAssigneeRule: "caller" | "admin";
+  cadence: string | null;
+  evidenceExpectation: string | null;
+  builtIn: boolean;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function fetchCapabilities(
+  organisationId: number,
+): Promise<{ capabilities: Capability[] }> {
+  return apiRequest(`/api/work/capabilities?organisationId=${organisationId}`);
+}
+
+export type CreateCapabilityInput = {
+  organisationId: number;
+  name: string;
+  description?: string | null;
+  suggestedTitle: string;
+  suggestedDescription?: string | null;
+  suggestedExpectedOutput?: string | null;
+  evidenceExpectation?: string | null;
+  checklist?: string[] | null;
+  defaultAssigneeRule?: "caller" | "admin";
+  cadence?: string | null;
+};
+
+export function createCapability(
+  input: CreateCapabilityInput,
+): Promise<{ message: string; capability: Capability }> {
+  return apiRequest("/api/work/capabilities", { method: "POST", body: input });
+}
+
+export type UpdateCapabilityInput = Partial<{
+  name: string;
+  description: string | null;
+  suggestedTitle: string;
+  suggestedDescription: string | null;
+  suggestedExpectedOutput: string | null;
+  evidenceExpectation: string | null;
+  checklist: string[] | null;
+  defaultAssigneeRule: "caller" | "admin";
+  cadence: string | null;
+  active: boolean;
+}>;
+
+export function updateCapability(
+  id: number,
+  input: UpdateCapabilityInput,
+): Promise<{ message: string; capability: Capability }> {
+  return apiRequest(`/api/work/capabilities/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export type InstantiateCapabilityInput = Partial<{
+  title: string;
+  description: string | null;
+  expectedOutput: string | null;
+  dueAt: string | null;
+  assigneeProfileId: number;
+  departmentId: number | null;
+}>;
+
+export function instantiateCapability(
+  id: number,
+  input: InstantiateCapabilityInput,
+): Promise<{ message: string; workItem: WorkItem; assignment: WorkAssignment }> {
+  return apiRequest(`/api/work/capabilities/${id}/instantiate`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+/* ------------------------------------------------------------------------
+   Schedules — a capability plus a cadence, generating ordinary Work.
+   --------------------------------------------------------------------- */
+
+export type Schedule = {
+  id: number;
+  organisationId: number;
+  capabilityId: number;
+  cadence: string;
+  nextRunOn: string;
+  lastGeneratedOn: string | null;
+  assigneeProfileId: number | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function fetchSchedules(
+  organisationId: number,
+): Promise<{ schedules: Schedule[] }> {
+  return apiRequest(`/api/work/schedules?organisationId=${organisationId}`);
+}
+
+export type CreateScheduleInput = {
+  organisationId: number;
+  capabilityId: number;
+  cadence?: string;
+  nextRunOn?: string;
+  assigneeProfileId: number;
+};
+
+export function createSchedule(
+  input: CreateScheduleInput,
+): Promise<{ message: string; schedule: Schedule }> {
+  return apiRequest("/api/work/schedules", { method: "POST", body: input });
+}
+
+export function generateSchedules(
+  organisationId: number,
+): Promise<{ message: string; workItems: WorkItem[] }> {
+  return apiRequest("/api/work/schedules/generate", {
+    method: "POST",
+    body: { organisationId },
+  });
+}
+
+/* ------------------------------------------------------------------------
+   Stalled work — diagnostics, never a person score.
+   --------------------------------------------------------------------- */
+
+export type StalledDiagnostic = {
+  workItem: WorkItem;
+  accountableProfileId: number;
+  status: WorkStatus;
+  lastActivityAt: string;
+  dueAt: string | null;
+  ageDays: number;
+  inactivityDays: number;
+  blockedReason: string | null;
+  kind: "stalled_blocked" | "overdue" | "stalled_inactive";
+  message: string;
+  suggestedNextAction: string;
+};
+
+export function fetchStalled(
+  organisationId: number,
+): Promise<{ stalled: StalledDiagnostic[] }> {
+  return apiRequest(`/api/work/stalled?organisationId=${organisationId}`);
+}
+
+export function scanStalled(
+  organisationId: number,
+): Promise<{ message: string; stalled: StalledDiagnostic[] }> {
+  return apiRequest("/api/work/stalled/scan", {
+    method: "POST",
+    body: { organisationId },
+  });
 }

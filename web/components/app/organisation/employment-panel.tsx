@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { ApiError } from "@/lib/api";
 import {
   createContract,
+  createContractReviewWork,
   createEmploymentRecord,
   employmentStatusLabel,
   fetchContracts,
@@ -83,6 +85,7 @@ export function EmploymentPanel({
   const [editingEmployment, setEditingEmployment] = useState(false);
   const [addingContract, setAddingContract] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reviewWorkId, setReviewWorkId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -311,6 +314,40 @@ export function EmploymentPanel({
                             {contract.isActive ? "Active" : "Ended"}
                           </StatusPill>
 
+                          {canAdminister && contract.isActive && contract.endDate && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={busy}
+                              onClick={async () => {
+                                setBusy(true);
+                                setStatus(null);
+                                setReviewWorkId(null);
+
+                                try {
+                                  const { message, workItem } =
+                                    await createContractReviewWork(
+                                      organisationId,
+                                      contract.id,
+                                      "review",
+                                    );
+
+                                  setStatus({ tone: "ok", message });
+                                  setReviewWorkId(workItem.id);
+                                } catch (caught) {
+                                  setStatus({
+                                    tone: "error",
+                                    message: failureMessage(caught),
+                                  });
+                                } finally {
+                                  setBusy(false);
+                                }
+                              }}
+                            >
+                              Create review work
+                            </Button>
+                          )}
+
                           {canAdminister && contract.isActive && (
                             <Button
                               size="sm"
@@ -347,6 +384,17 @@ export function EmploymentPanel({
                       </li>
                     ))}
                   </ul>
+                )}
+
+                {reviewWorkId && (
+                  <p className="mt-2 text-[12.5px] text-yz-neutral-600">
+                    <Link
+                      href={`/work/${reviewWorkId}`}
+                      className="font-semibold text-yz-ink underline underline-offset-4"
+                    >
+                      Open the review work item →
+                    </Link>
+                  </p>
                 )}
 
                 {addingContract && (

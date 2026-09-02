@@ -1,4 +1,5 @@
 import type { FieldError, Validated } from "../profile/profile.validation.js";
+import { isBlockedReason, type BlockedReason } from "./obligation.types.js";
 import { isWorkStatus, type WorkStatus } from "./work.record.js";
 
 export type { FieldError, Validated };
@@ -114,6 +115,32 @@ export function validateProgress(raw: unknown): Validated<number> {
           field: "progress",
           message: "Progress must be a whole number from 0 to 100.",
         },
+      ],
+    };
+  }
+
+  return { ok: true, value };
+}
+
+/**
+ * blockedReason — required and validated only when the caller is setting
+ * status to "blocked"; null/undefined/"" otherwise means "no reason", which
+ * the service clears whenever status leaves "blocked".
+ */
+export function validateOptionalBlockedReason(
+  raw: unknown,
+): Validated<BlockedReason | null> {
+  if (raw === null || raw === undefined || raw === "") {
+    return { ok: true, value: null };
+  }
+
+  const value = String(raw).trim().toLowerCase();
+
+  if (!isBlockedReason(value)) {
+    return {
+      ok: false,
+      errors: [
+        { field: "blockedReason", message: "Choose one of the listed blocked reasons." },
       ],
     };
   }

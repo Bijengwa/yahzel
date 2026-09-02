@@ -11,6 +11,11 @@ import {
   updateContractDetails,
   updateEmploymentRecordDetails,
 } from "./employment.service.js";
+import {
+  createReviewWorkForContract,
+  listExpiringContracts,
+  scanContractExpiry,
+} from "./employment.expiry.service.js";
 
 /**
  * One place where a thrown error becomes a response — the same shape
@@ -157,5 +162,50 @@ export async function updateContractHandler(
     res.status(200).json(result);
   } catch (error) {
     handleFailure(res, error, "Failed to update contract");
+  }
+}
+
+/* ------------------------------------------------------------------ Phase 4
+   Contract expiry — surfaced from the same Phase 3 contract records, never
+   mutating them. See employment.expiry.service.ts.
+   --------------------------------------------------------------------- */
+
+export async function indexExpiring(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+
+    res
+      .status(200)
+      .json(await listExpiringContracts(currentUserId(req), organisationId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to list expiring contracts");
+  }
+}
+
+export async function scanExpiry(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+
+    res.status(200).json(await scanContractExpiry(currentUserId(req), organisationId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to scan for expiring contracts");
+  }
+}
+
+export async function createReviewWork(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+    const contractId = readId(req.params.contractId, "contract");
+
+    const result = await createReviewWorkForContract(
+      currentUserId(req),
+      organisationId,
+      contractId,
+      req.body ?? {},
+    );
+
+    res.status(201).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to create contract review work");
   }
 }

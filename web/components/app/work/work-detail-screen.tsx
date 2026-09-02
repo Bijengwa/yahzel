@@ -23,6 +23,7 @@ import {
   assignWorkItem,
   createReport,
   fetchWorkItem,
+  loadWorkVocabulary,
   REPORT_STATE_LABELS,
   returnReport,
   submitReport,
@@ -30,6 +31,7 @@ import {
   updateWorkItem,
   uploadReportAttachment,
   WORK_STATUS_OPTIONS,
+  type BlockedReasonOption,
   type ReportState,
   type WorkAssignment,
   type WorkItem,
@@ -52,6 +54,7 @@ const EMPTY_EDIT = {
   dueAt: "",
   status: "not_started",
   progress: "0",
+  blockedReason: "",
 };
 
 function failureMessage(caught: unknown): string {
@@ -68,6 +71,7 @@ function formFromItem(item: WorkItem) {
     dueAt: item.dueAt ? item.dueAt.slice(0, 10) : "",
     status: item.status as string,
     progress: String(item.progress),
+    blockedReason: item.blockedReason ?? "",
   };
 }
 
@@ -129,6 +133,9 @@ export function WorkDetailScreen({ workItemId }: { workItemId: number }) {
   const [parentTitle, setParentTitle] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [blockedReasonOptions, setBlockedReasonOptions] = useState<
+    BlockedReasonOption[]
+  >([]);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(EMPTY_EDIT);
@@ -215,6 +222,15 @@ export function WorkDetailScreen({ workItemId }: { workItemId: number }) {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    loadWorkVocabulary()
+      .then(({ blockedReasons }) => setBlockedReasonOptions(blockedReasons))
+      .catch(() => {
+        // The picker falls back to a bare text-free choice; the value is
+        // still validated server-side regardless.
+      });
+  }, []);
+
   function nameFor(profileId: number): string {
     const member = members.find((entry) => entry.profileId === profileId);
     return member?.fullName ?? member?.email ?? `Person #${profileId}`;
@@ -264,6 +280,7 @@ export function WorkDetailScreen({ workItemId }: { workItemId: number }) {
         dueAt: form.dueAt || null,
         status: form.status as WorkItem["status"],
         progress: Number(form.progress),
+        blockedReason: form.status === "blocked" ? form.blockedReason || null : null,
       });
 
       setEditStatus({ tone: "ok", message });
@@ -516,6 +533,16 @@ export function WorkDetailScreen({ workItemId }: { workItemId: number }) {
                     ) : null
                   }
                 />
+                {workItem.status === "blocked" && (
+                  <ReadRow
+                    label="Blocked reason"
+                    value={
+                      blockedReasonOptions.find(
+                        (option) => option.value === workItem.blockedReason,
+                      )?.label ?? workItem.blockedReason
+                    }
+                  />
+                )}
               </dl>
             </>
           ) : (
@@ -600,6 +627,25 @@ export function WorkDetailScreen({ workItemId }: { workItemId: number }) {
                     }
                   />
                 </div>
+
+                {form.status === "blocked" && (
+                  <SelectField
+                    id="editBlockedReason"
+                    label="Blocked reason"
+                    value={form.blockedReason}
+                    error={editErrors.blockedReason}
+                    onChange={(event) =>
+                      setForm((c) => ({ ...c, blockedReason: event.target.value }))
+                    }
+                  >
+                    <option value="">Choose a reason</option>
+                    {blockedReasonOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </SelectField>
+                )}
               </div>
 
               <div className="mt-4 flex items-center gap-2">

@@ -8,6 +8,12 @@ import {
   PARTICIPATION_TYPES,
 } from "./organisation/organisation.types.js";
 import { CONTRACT_TYPES, EMPLOYMENT_STATUSES } from "./employment/employment.types.js";
+import {
+  BLOCKED_REASONS,
+  BLOCKED_REASON_LABELS,
+  BUILT_IN_CAPABILITIES,
+  CADENCES,
+} from "./work/obligation.types.js";
 
 /**
  * Static reference data the web client needs to render pickers. It lives here
@@ -47,6 +53,23 @@ router.get("/employment-types", (_req, res) => {
   res.status(200).json({
     contractTypes: CONTRACT_TYPES,
     employmentStatuses: EMPLOYMENT_STATUSES,
+  });
+});
+
+/**
+ * Phase 4's own vocabulary: the blocked-reason list Work validates against,
+ * the cadences a schedule may run on, and the built-in capability catalogue
+ * (for a "what could this create?" preview before instantiating one).
+ */
+router.get("/work-vocabulary", (_req, res) => {
+  res.set("Cache-Control", "public, max-age=86400");
+  res.status(200).json({
+    blockedReasons: BLOCKED_REASONS.map((value) => ({
+      value,
+      label: BLOCKED_REASON_LABELS[value],
+    })),
+    cadences: CADENCES,
+    builtInCapabilities: BUILT_IN_CAPABILITIES,
   });
 });
 

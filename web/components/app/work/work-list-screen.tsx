@@ -20,6 +20,7 @@ import {
 } from "@/lib/work";
 import { HierarchyEntry } from "../hierarchy/hierarchy-entry";
 import { useProfile } from "../profile/profile-provider";
+import { WorkAdminTools } from "./work-admin-tools";
 import { WorkRow, WorkRowHeader } from "./work-row";
 
 type View = "mine" | "assigned";
@@ -166,6 +167,7 @@ export function WorkListScreen() {
       />
 
       <HierarchyEntry />
+      <WorkAdminTools />
 
       {error && (
         <StatusMessage tone="error">

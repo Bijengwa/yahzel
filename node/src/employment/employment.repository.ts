@@ -140,6 +140,15 @@ export function findContractById(
   return queryable<ContractRecord>(CONTRACTS).where({ id }).first();
 }
 
+/** Every active, dated contract in an organisation — the candidate set the expiry scan checks against its notice window. */
+export function listActiveContractsForOrganisation(
+  organisationId: number,
+): Promise<ContractRecord[]> {
+  return db<ContractRecord>(CONTRACTS)
+    .where({ organisation_id: organisationId, status: "active" })
+    .whereNotNull("end_date");
+}
+
 export function findActiveContractByEmploymentRecord(
   employmentRecordId: number,
   queryable: Queryable = db,

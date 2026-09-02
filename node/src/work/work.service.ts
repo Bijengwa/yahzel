@@ -6,6 +6,7 @@ import type { OrganisationMemberRecord } from "../organisation/organisation.reco
 import { findProjectById } from "../projects/project.repository.js";
 import { findDepartmentById } from "../departments/department.repository.js";
 import { createNotification } from "../notifications/notification.service.js";
+import { clearStallNotice } from "./obligation.repository.js";
 import type {
   WorkAssignmentRecord,
   WorkItemRecord,
@@ -43,6 +44,7 @@ import {
   validateDueAt,
   validateExpectedOutput,
   validateInstructions,
+  validateOptionalBlockedReason,
   validateOptionalPositiveId,
   validatePositiveId,
   validateProgress,
@@ -85,7 +87,7 @@ const notAllowed = () =>
    Serialisation
    --------------------------------------------------------------------- */
 
-function publicWorkItem(record: WorkItemRecord) {
+export function publicWorkItem(record: WorkItemRecord) {
   return {
     id: record.id,
     organisationId: record.organisation_id,
@@ -101,13 +103,19 @@ function publicWorkItem(record: WorkItemRecord) {
     lastActivityAt: record.last_activity_at,
     lastProgressAt: record.last_progress_at,
     lastReportAt: record.last_report_at,
+    blockedReason: record.blocked_reason,
+    sourceCapabilityId: record.source_capability_id,
+    sourceScheduleId: record.source_schedule_id,
+    occurrenceKey: record.occurrence_key,
+    contractId: record.contract_id,
+    employmentRecordId: record.employment_record_id,
     createdBy: record.created_by,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };
 }
 
-function publicAssignment(record: WorkAssignmentRecord) {
+export function publicAssignment(record: WorkAssignmentRecord) {
   return {
     id: record.id,
     workItemId: record.work_item_id,
@@ -164,7 +172,7 @@ export type PublicAttachment = ReturnType<typeof publicAttachment>;
    Access
    --------------------------------------------------------------------- */
 
-async function requireOrganisationMembership(
+export async function requireOrganisationMembership(
   userId: number,
   organisationId: number,
 ): Promise<OrganisationMemberRecord> {
@@ -492,6 +500,64 @@ export async function createWorkItem(userId: number, input: CreateWorkInput) {
   };
 }
 
+/**
+ * The one other door into the Work engine besides createWorkItem: used by
+ * capability instantiation, schedule generation and contract-expiry review
+ * work, where the title/description/assignee are already resolved
+ * server-side (from a capability or a contract) rather than typed by a
+ * person into the create form. It shares the exact same insert path —
+ * createWorkItemWithAssignment — so a generated Work Item is a Work Item in
+ * every respect: same table, same assignment mechanism, same downstream
+ * reporting/acceptance/history. This is not a second task engine; it is the
+ * same one, called from a second place.
+ */
+export async function createLinkedWorkItem(input: {
+  organisationId: number;
+  title: string;
+  description: string | null;
+  expectedOutput: string | null;
+  dueAt: string | null;
+  departmentId?: number | null;
+  createdBy: number;
+  assigneeProfileId: number;
+  sourceCapabilityId?: number | null;
+  sourceScheduleId?: number | null;
+  occurrenceKey?: string | null;
+  contractId?: number | null;
+  employmentRecordId?: number | null;
+}) {
+  const { workItem, assignment } = await createWorkItemWithAssignment({
+    organisationId: input.organisationId,
+    title: input.title,
+    description: input.description,
+    expectedOutput: input.expectedOutput,
+    dueAt: input.dueAt,
+    projectId: null,
+    parentId: null,
+    departmentId: input.departmentId ?? null,
+    createdBy: input.createdBy,
+    assigneeProfileId: input.assigneeProfileId,
+    sourceCapabilityId: input.sourceCapabilityId ?? null,
+    sourceScheduleId: input.sourceScheduleId ?? null,
+    occurrenceKey: input.occurrenceKey ?? null,
+    contractId: input.contractId ?? null,
+    employmentRecordId: input.employmentRecordId ?? null,
+  });
+
+  if (input.assigneeProfileId !== input.createdBy) {
+    await createNotification({
+      recipientProfileId: input.assigneeProfileId,
+      type: "work.assigned",
+      message: `You have been assigned "${workItem.title}".`,
+      organisationId: workItem.organisation_id,
+      workItemId: workItem.id,
+      actionUrl: `/work/${workItem.id}`,
+    });
+  }
+
+  return { workItem, assignment };
+}
+
 /* ------------------------------------------------------------------------
    Read
    --------------------------------------------------------------------- */
@@ -564,6 +630,7 @@ export type UpdateWorkInput = {
   dueAt?: unknown;
   status?: unknown;
   progress?: unknown;
+  blockedReason?: unknown;
 };
 
 export async function updateWorkItem(
@@ -612,6 +679,11 @@ export async function updateWorkItem(
       ? { ok: true as const, value: workItem.progress }
       : validateProgress(input.progress);
 
+  const blockedReason =
+    input.blockedReason === undefined
+      ? { ok: true as const, value: workItem.blocked_reason }
+      : validateOptionalBlockedReason(input.blockedReason);
+
   const errors: FieldError[] = [
     title,
     description,
@@ -619,6 +691,7 @@ export async function updateWorkItem(
     dueAt,
     status,
     progress,
+    blockedReason,
   ].flatMap((result) => (result.ok ? [] : result.errors));
 
   if (
@@ -627,10 +700,24 @@ export async function updateWorkItem(
     !expectedOutput.ok ||
     !dueAt.ok ||
     !status.ok ||
-    !progress.ok
+    !progress.ok ||
+    !blockedReason.ok
   ) {
     throw new WorkError(422, errors);
   }
+
+  // Blocked is a diagnostic reason, not free text: it exists only while the
+  // item is actually blocked, and is required (not merely allowed) once the
+  // caller sets that status — never silently guessed.
+  if (status.value === "blocked" && blockedReason.value === null) {
+    throw WorkError.field(
+      422,
+      "blockedReason",
+      "Say why this work is blocked.",
+    );
+  }
+
+  const finalBlockedReason = status.value === "blocked" ? blockedReason.value : null;
 
   // "done" and 100% progress are the same idea seen from two directions.
   // Whichever one the caller did not explicitly set is brought into line with
@@ -662,9 +749,17 @@ export async function updateWorkItem(
     due_at: dueAt.value,
     status: finalStatus,
     progress: finalProgress,
+    blocked_reason: finalStatus === "blocked" ? finalBlockedReason : null,
     last_activity_at: new Date().toISOString(),
     ...(progressChanged ? { last_progress_at: new Date().toISOString() } : {}),
   });
+
+  // A finished or cancelled item can never be stalled — it drops out of the
+  // scan's own candidate set from this point on, so its notice (if any) is
+  // cleared here rather than left to a scan that will never see it again.
+  if (finalStatus === "done" || finalStatus === "cancelled") {
+    await clearStallNotice(workItem.id);
+  }
 
   return {
     message: "This work item has been updated.",
@@ -926,6 +1021,9 @@ export async function acceptReport(userId: number, reportId: number) {
     last_activity_at: new Date().toISOString(),
     last_progress_at: new Date().toISOString(),
   });
+
+  // See updateWorkItem's own note: done work can never be stalled.
+  await clearStallNotice(workItem.id);
 
   if (report.author_profile_id !== userId) {
     await createNotification({

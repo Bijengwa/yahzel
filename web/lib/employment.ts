@@ -163,3 +163,33 @@ export function createContractReviewWork(
     { method: "POST", body: { action } },
   );
 }
+
+/* ------------------------------------------------------------------------
+   Contract expiry — Phase 4. Surfaced from the same Phase 3 contract
+   records above; nothing here mutates a contract or renews it.
+   --------------------------------------------------------------------- */
+
+export type ExpiringContract = {
+  contract: Contract;
+  employmentRecord: EmploymentRecord;
+  memberId: number;
+  memberName: string;
+  /** Negative once the contract has already ended without being renewed. */
+  daysUntilExpiry: number;
+  notifiedAt: string | null;
+  linkedWorkItemId: number | null;
+};
+
+export function fetchExpiringContracts(
+  organisationId: number,
+): Promise<{ expiring: ExpiringContract[] }> {
+  return apiRequest(`/api/employment/${organisationId}/expiring-contracts`);
+}
+
+export function scanContractExpiry(
+  organisationId: number,
+): Promise<{ message: string; expiring: ExpiringContract[] }> {
+  return apiRequest(`/api/employment/${organisationId}/scan-expiry`, {
+    method: "POST",
+  });
+}

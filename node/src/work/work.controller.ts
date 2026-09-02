@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import { currentUserId } from "../middleware/require-auth.js";
+import { OrganisationError } from "../organisation/organisation.service.js";
 import {
   WorkError,
   acceptReport,
@@ -17,6 +18,20 @@ import {
   updateReport,
   updateWorkItem,
 } from "./work.service.js";
+import {
+  createCapability,
+  getWorkSettings,
+  instantiateCapability,
+  listCapabilitiesForOrganisation,
+  updateCapabilityDetails,
+  updateWorkSettingsForOrganisation,
+} from "./work.capability.service.js";
+import {
+  createSchedule,
+  generateSchedulesForOrganisation,
+  listSchedulesForOrganisation,
+} from "./work.schedule.service.js";
+import { listStalledForOrganisation, runStalledScan } from "./work.stalled.service.js";
 
 /**
  * One place where a thrown error becomes a response. Anything that is not a
@@ -24,7 +39,7 @@ import {
  * database details never reach the browser.
  */
 function handleFailure(res: Response, error: unknown, context: string): void {
-  if (error instanceof WorkError) {
+  if (error instanceof WorkError || error instanceof OrganisationError) {
     res.status(error.status).json({
       message: error.message,
       errors: error.errors,
@@ -56,6 +71,33 @@ function readReportId(raw: unknown): number {
 
   if (!Number.isInteger(value) || value <= 0) {
     throw WorkError.field(404, "form", "That report could not be found.");
+  }
+
+  return value;
+}
+
+/**
+ * These Phase 4 routes are not nested under an organisation path segment
+ * (unlike departments/employment), so the organisation is named explicitly —
+ * a query parameter on a read, a body field on a write — and checked the
+ * same way every other Work call checks it: by membership, not by trusting
+ * the caller.
+ */
+function readOrganisationId(raw: unknown): number {
+  const value = Number(raw);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw WorkError.field(422, "organisationId", "Choose an organisation.");
+  }
+
+  return value;
+}
+
+function readCapabilityId(raw: unknown): number {
+  const value = Number(raw);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw WorkError.field(404, "form", "That capability could not be found.");
   }
 
   return value;
@@ -208,5 +250,138 @@ export async function attachToReport(
     res.status(201).json(result);
   } catch (error) {
     handleFailure(res, error, "Failed to attach a file");
+  }
+}
+
+/* ------------------------------------------------------------------ Phase 4
+   Settings, capabilities, schedules and stalled-work diagnostics — all
+   organisation-scoped, all admin-only except listing/using a capability
+   (see work.capability.service.ts's own notes on why).
+   --------------------------------------------------------------------- */
+
+export async function settingsShow(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readOrganisationId(req.query.organisationId);
+    res.status(200).json(await getWorkSettings(currentUserId(req), organisationId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to load work settings");
+  }
+}
+
+export async function settingsUpdate(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readOrganisationId(req.body?.organisationId);
+    res
+      .status(200)
+      .json(
+        await updateWorkSettingsForOrganisation(
+          currentUserId(req),
+          organisationId,
+          req.body ?? {},
+        ),
+      );
+  } catch (error) {
+    handleFailure(res, error, "Failed to update work settings");
+  }
+}
+
+export async function capabilitiesIndex(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readOrganisationId(req.query.organisationId);
+    res
+      .status(200)
+      .json(await listCapabilitiesForOrganisation(currentUserId(req), organisationId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to list capabilities");
+  }
+}
+
+export async function capabilitiesCreate(req: Request, res: Response): Promise<void> {
+  try {
+    const result = await createCapability(currentUserId(req), req.body ?? {});
+    res.status(201).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to create a capability");
+  }
+}
+
+export async function capabilitiesUpdate(req: Request, res: Response): Promise<void> {
+  try {
+    const id = readCapabilityId(req.params.id);
+    res
+      .status(200)
+      .json(await updateCapabilityDetails(currentUserId(req), id, req.body ?? {}));
+  } catch (error) {
+    handleFailure(res, error, "Failed to update a capability");
+  }
+}
+
+export async function capabilitiesInstantiate(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const id = readCapabilityId(req.params.id);
+    const result = await instantiateCapability(
+      currentUserId(req),
+      id,
+      req.body ?? {},
+    );
+    res.status(201).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to use a capability");
+  }
+}
+
+export async function schedulesIndex(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readOrganisationId(req.query.organisationId);
+    res
+      .status(200)
+      .json(await listSchedulesForOrganisation(currentUserId(req), organisationId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to list schedules");
+  }
+}
+
+export async function schedulesCreate(req: Request, res: Response): Promise<void> {
+  try {
+    const result = await createSchedule(currentUserId(req), req.body ?? {});
+    res.status(201).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to create a schedule");
+  }
+}
+
+export async function schedulesGenerate(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readOrganisationId(req.body?.organisationId);
+    res
+      .status(200)
+      .json(
+        await generateSchedulesForOrganisation(currentUserId(req), organisationId),
+      );
+  } catch (error) {
+    handleFailure(res, error, "Failed to generate recurring work");
+  }
+}
+
+export async function stalledIndex(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readOrganisationId(req.query.organisationId);
+    res
+      .status(200)
+      .json(await listStalledForOrganisation(currentUserId(req), organisationId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to list stalled work");
+  }
+}
+
+export async function stalledScan(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readOrganisationId(req.body?.organisationId);
+    res.status(200).json(await runStalledScan(currentUserId(req), organisationId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to scan for stalled work");
   }
 }

@@ -7,6 +7,10 @@ import { SelectField, TextField } from "@/components/ui/field";
 import { PanelGroup, StatusMessage } from "@/components/ui/panel";
 import { ApiError } from "@/lib/api";
 import {
+  fetchExpiringContracts,
+  type ExpiringContract,
+} from "@/lib/employment";
+import {
   concludeMembership,
   describeStanding,
   fetchOrganisationInvitations,
@@ -68,6 +72,7 @@ export function PeoplePanel({
   const [busyMember, setBusyMember] = useState<number | null>(null);
   const [editing, setEditing] = useState<Member | null>(null);
   const [employmentTarget, setEmploymentTarget] = useState<Member | null>(null);
+  const [expiring, setExpiring] = useState<ExpiringContract[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -89,6 +94,14 @@ export function PeoplePanel({
       setInvitations(sent.filter((entry) => entry.status === "pending"));
     } catch {
       // Not being able to list invitations must not hide the people.
+    }
+
+    try {
+      const { expiring: list } = await fetchExpiringContracts(organisationId);
+
+      setExpiring(list);
+    } catch {
+      // Not being able to load this must not hide the people list either.
     }
   }, [organisationId, canAdminister]);
 
@@ -451,6 +464,46 @@ export function PeoplePanel({
           <p className="text-[13px] text-yz-neutral-600">No other people yet.</p>
         )}
       </PanelGroup>
+
+      {canAdminister && expiring.length > 0 && (
+        <PanelGroup title={`Contracts to review (${expiring.length})`}>
+          <ul className="divide-y divide-yz-neutral-200">
+            {expiring.map((entry) => (
+              <li
+                key={entry.contract.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-[13px] font-semibold text-yz-ink">
+                    {entry.memberName}
+                  </span>
+
+                  <span className="block truncate text-[12px] text-yz-neutral-600">
+                    {entry.contract.contractTypeLabel} —{" "}
+                    {entry.daysUntilExpiry >= 0
+                      ? `ends in ${entry.daysUntilExpiry} day(s)`
+                      : `ended ${Math.abs(entry.daysUntilExpiry)} day(s) ago`}
+                  </span>
+                </span>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const member = members?.find((m) => m.id === entry.memberId);
+
+                    if (member) {
+                      setEmploymentTarget(member);
+                    }
+                  }}
+                >
+                  Review
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </PanelGroup>
+      )}
 
       {canAdminister && invitations.length > 0 && (
         <PanelGroup title="Invitations sent">

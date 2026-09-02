@@ -41,6 +41,7 @@ type WorkItemPatch = Partial<
     | "last_activity_at"
     | "last_progress_at"
     | "last_report_at"
+    | "blocked_reason"
   >
 >;
 
@@ -103,6 +104,19 @@ export function listVisibleWorkItems(userId: number): Promise<WorkItemRecord[]> 
     .orderBy("created_at", "desc");
 }
 
+/**
+ * Every open (not done/cancelled) Work Item in an organisation — the
+ * candidate set the stalled-work scan checks against its thresholds.
+ */
+export function listOpenWorkItemsForOrganisation(
+  organisationId: number,
+): Promise<WorkItemRecord[]> {
+  return db<WorkItemRecord>(ITEMS)
+    .where({ organisation_id: organisationId })
+    .whereNotIn("status", ["done", "cancelled"])
+    .orderBy("last_activity_at", "asc");
+}
+
 /** Direct children of a Work Item, scoped to the same organisation. */
 export function listChildWorkItems(
   parentId: number,
@@ -159,6 +173,12 @@ export async function createWorkItemWithAssignment(input: {
   departmentId: number | null;
   createdBy: number;
   assigneeProfileId: number;
+  /** Phase 4 — where this Work Item came from, if anywhere. See migration 019. */
+  sourceCapabilityId?: number | null;
+  sourceScheduleId?: number | null;
+  occurrenceKey?: string | null;
+  contractId?: number | null;
+  employmentRecordId?: number | null;
 }): Promise<{ workItem: WorkItemRecord; assignment: WorkAssignmentRecord }> {
   return db.transaction(async (trx) => {
     const [workItem] = await trx<WorkItemRecord>(ITEMS)
@@ -173,6 +193,11 @@ export async function createWorkItemWithAssignment(input: {
         department_id: input.departmentId,
         last_activity_at: trx.fn.now() as unknown as string,
         created_by: input.createdBy,
+        source_capability_id: input.sourceCapabilityId ?? null,
+        source_schedule_id: input.sourceScheduleId ?? null,
+        occurrence_key: input.occurrenceKey ?? null,
+        contract_id: input.contractId ?? null,
+        employment_record_id: input.employmentRecordId ?? null,
       })
       .returning("*");
 
