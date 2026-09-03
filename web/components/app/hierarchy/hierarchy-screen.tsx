@@ -39,6 +39,7 @@ import {
   type Membership,
   type Organisation,
 } from "@/lib/organisation";
+import { OrganisationTabs } from "../organisation/organisation-tabs";
 import { DepartmentsPanel } from "./departments-panel";
 import { OrgChart } from "./org-chart";
 import type { OccupancyDisplay } from "./org-chart-node";
@@ -414,6 +415,8 @@ export function HierarchyScreen({
       <div className="space-y-3">
         <PageHeader title="Organisation Hierarchy" />
 
+        <OrganisationTabs organisationId={organisationId} />
+
         <StatusMessage tone="error">
           Only an administrator can manage this organisation&apos;s hierarchy.{" "}
           <Link href="/work" className="font-bold underline underline-offset-4">
@@ -474,6 +477,8 @@ export function HierarchyScreen({
           </div>
         }
       />
+
+      <OrganisationTabs organisationId={organisationId} />
 
       <Panel>
         <PanelGroup title="Positions">

@@ -20,6 +20,7 @@ import {
 } from "@/lib/organisation";
 import { ReadRow } from "../profile/profile-section";
 import { MembershipStatusPill } from "./organisation-card";
+import { OrganisationTabs } from "./organisation-tabs";
 import { PeoplePanel } from "./people-panel";
 import { StandingPills } from "./standing-pills";
 
@@ -104,8 +105,10 @@ export function OrganisationScreen({
         }
       />
 
+      <OrganisationTabs organisationId={organisation.id} />
+
       <Panel>
-        <PanelGroup title="Overview">
+        <PanelGroup title="About">
           {organisation.description && (
             <p className="mb-2 text-[13px] leading-6 text-yz-neutral-700">
               {organisation.description}
