@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import {
+  deleteNotification,
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -25,6 +26,7 @@ type NotificationsContextValue = {
   loading: boolean;
   markRead: (id: number) => Promise<void>;
   markAllRead: () => Promise<void>;
+  remove: (id: number) => Promise<void>;
 };
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(
@@ -138,9 +140,34 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const remove = useCallback(
+    async (id: number) => {
+      const target = notifications.find((item) => item.id === id);
+
+      if (!target) {
+        return;
+      }
+
+      seenIds.current.delete(id);
+      setNotifications((current) => current.filter((item) => item.id !== id));
+
+      if (!target.read) {
+        setUnreadCount((current) => Math.max(0, current - 1));
+      }
+
+      try {
+        await deleteNotification(id);
+      } catch {
+        // Left removed locally; the next full load reconciles it if the
+        // request actually failed server-side.
+      }
+    },
+    [notifications],
+  );
+
   return (
     <NotificationsContext.Provider
-      value={{ notifications, unreadCount, loading, markRead, markAllRead }}
+      value={{ notifications, unreadCount, loading, markRead, markAllRead, remove }}
     >
       {children}
     </NotificationsContext.Provider>

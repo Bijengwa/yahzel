@@ -14,6 +14,8 @@ export type ProfileRecord = {
   gender: string | null;
   country: string | null;
   profile_picture_url: string | null;
+  headline: string | null;
+  summary: string | null;
 
   // Credentials
   email: string;

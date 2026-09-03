@@ -7,8 +7,10 @@ import {
   archiveProject,
   createOutcome,
   createProject,
+  exportProjectReport,
   getProjectHealth,
   getProjectOverview,
+  getProjectReport,
   linkWorkItem,
   listMembers,
   listOrganisationProjects,
@@ -190,6 +192,39 @@ export async function history(req: Request, res: Response): Promise<void> {
       );
   } catch (error) {
     handleFailure(res, error, "Failed to load project history");
+  }
+}
+
+export async function report(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+    const projectId = readId(req.params.projectId, "project");
+
+    res
+      .status(200)
+      .json(await getProjectReport(currentUserId(req), organisationId, projectId));
+  } catch (error) {
+    handleFailure(res, error, "Failed to load project report");
+  }
+}
+
+export async function reportExport(req: Request, res: Response): Promise<void> {
+  try {
+    const organisationId = readId(req.params.organisationId, "organisation");
+    const projectId = readId(req.params.projectId, "project");
+
+    res
+      .status(200)
+      .json(
+        await exportProjectReport(
+          currentUserId(req),
+          organisationId,
+          projectId,
+          req.body?.format,
+        ),
+      );
+  } catch (error) {
+    handleFailure(res, error, "Failed to export project report");
   }
 }
 

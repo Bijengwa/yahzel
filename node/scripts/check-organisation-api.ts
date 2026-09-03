@@ -369,6 +369,24 @@ check(
   r.body.participation,
 );
 
+/* --------------------------------------------------- V1: org settings */
+
+r = await call(`/api/organisations/${organisationId}`, json("PATCH", stranger.token, { name: "Hijacked" }));
+check("a non-member cannot update organisation settings", r.status === 403 || r.status === 404, r.status);
+
+r = await call(
+  `/api/organisations/${organisationId}`,
+  json("PATCH", founder.token, { name: "Renamed Org", description: "A new description." }),
+);
+check(
+  "an admin can rename the organisation and edit its description",
+  r.status === 200 && r.body.organisation?.name === "Renamed Org" && r.body.organisation?.description === "A new description.",
+  r.body,
+);
+
+r = await call(`/api/organisations/${organisationId}`, json("PATCH", founder.token, { name: "" }));
+check("an empty organisation name is rejected", r.status === 422, r.body);
+
 /* ------------------------------------------------------------- teardown */
 
 // Organisations first: organisations.created_by is ON DELETE RESTRICT, and

@@ -1,5 +1,6 @@
 import { requireOccupancyCapability } from "../organisation/organisation.service.js";
 import { findMembershipById } from "../organisation/organisation.repository.js";
+import { createNotification } from "../notifications/notification.service.js";
 import { HierarchyError } from "./hierarchy.service.js";
 import { findPositionById } from "./hierarchy.repository.js";
 import type { PositionRecord } from "./hierarchy.record.js";
@@ -245,6 +246,16 @@ export async function assignOccupant(
     throw occupancyConflict(error) ?? error;
   }
 
+  if (member.profile_id !== null) {
+    await createNotification({
+      recipientProfileId: member.profile_id,
+      type: "hierarchy.position_assigned",
+      message: `You have been placed in ${position.name}.`,
+      organisationId,
+      actionUrl: `/organisation/${organisationId}/hierarchy`,
+    });
+  }
+
   return {
     message: `${position.name} now has an occupant.`,
     occupancy: publicOccupancy(created),
@@ -276,7 +287,7 @@ export async function replaceOccupant(
 
   const member = await requireEligibleMember(organisationId, memberId.value);
 
-  return withOccupancyTransaction(async (trx) => {
+  const result = await withOccupancyTransaction(async (trx) => {
     const currentOnPosition = await findActiveOccupancyByPosition(
       position.id,
       trx,
@@ -289,6 +300,7 @@ export async function replaceOccupant(
       return {
         message: `${position.name} already has this occupant.`,
         occupancy: publicOccupancy(currentOnPosition),
+        assigned: false,
       };
     }
 
@@ -324,8 +336,21 @@ export async function replaceOccupant(
     return {
       message: `${position.name} now has a new occupant.`,
       occupancy: publicOccupancy(created),
+      assigned: true,
     };
   });
+
+  if (result.assigned && member.profile_id !== null) {
+    await createNotification({
+      recipientProfileId: member.profile_id,
+      type: "hierarchy.position_assigned",
+      message: `You have been placed in ${position.name}.`,
+      organisationId,
+      actionUrl: `/organisation/${organisationId}/hierarchy`,
+    });
+  }
+
+  return { message: result.message, occupancy: result.occupancy };
 }
 
 /* ------------------------------------------------------------------------

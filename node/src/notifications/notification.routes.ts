@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { requireAuth } from "../middleware/require-auth.js";
-import { index, markAllRead, markRead, stream } from "./notification.controller.js";
+import { destroy, index, markAllRead, markRead, stream } from "./notification.controller.js";
 
 const router = Router();
 
@@ -13,5 +13,6 @@ router.get("/", index);
 router.get("/stream", stream);
 router.post("/read-all", markAllRead);
 router.post("/:id/read", markRead);
+router.delete("/:id", destroy);
 
 export default router;

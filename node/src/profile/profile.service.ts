@@ -17,6 +17,7 @@ import {
   validateUsername,
   type FieldError,
 } from "./profile.validation.js";
+import { validateHeadline, validateSummary } from "./profile.cv.validation.js";
 
 const OTP_EXPIRY_MINUTES = 10;
 
@@ -143,6 +144,9 @@ export function toPublicProfile(record: ProfileRecord) {
     // joins it with the API origin.
     profilePictureUrl: record.profile_picture_url,
 
+    headline: record.headline,
+    summary: record.summary,
+
     createdAt: record.created_at,
     completion: computeCompletion(record),
   };
@@ -211,6 +215,8 @@ export type ProfilePatchInput = {
   gender?: unknown;
   country?: unknown;
   phoneNumber?: unknown;
+  headline?: unknown;
+  summary?: unknown;
 };
 
 /**
@@ -296,6 +302,26 @@ export async function patchProfile(userId: number, input: ProfilePatchInput) {
         patch.phone_verification_otp = null;
         patch.phone_verification_otp_expires_at = null;
       }
+    }
+  }
+
+  if ("headline" in input) {
+    const result = validateHeadline(input.headline);
+
+    if (result.ok) {
+      patch.headline = result.value;
+    } else {
+      errors.push(...result.errors);
+    }
+  }
+
+  if ("summary" in input) {
+    const result = validateSummary(input.summary);
+
+    if (result.ok) {
+      patch.summary = result.value;
+    } else {
+      errors.push(...result.errors);
     }
   }
 

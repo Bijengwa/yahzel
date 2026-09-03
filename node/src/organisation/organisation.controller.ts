@@ -14,6 +14,7 @@ import {
   listMyInvitations,
   listMyParticipation,
   registerOrganisation,
+  updateOrganisationDetails,
   updateStanding,
 } from "./organisation.service.js";
 
@@ -106,6 +107,18 @@ export async function show(req: Request, res: Response): Promise<void> {
     res.status(200).json(await getOrganisation(currentUserId(req), id));
   } catch (error) {
     handleFailure(res, error, "Failed to load organisation");
+  }
+}
+
+export async function update(req: Request, res: Response): Promise<void> {
+  try {
+    const id = readId(req.params.id, "organisation");
+
+    res
+      .status(200)
+      .json(await updateOrganisationDetails(currentUserId(req), id, req.body ?? {}));
+  } catch (error) {
+    handleFailure(res, error, "Failed to update organisation");
   }
 }
 

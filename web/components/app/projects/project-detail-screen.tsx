@@ -21,6 +21,7 @@ import {
   addProjectMember,
   archiveProject,
   createProjectOutcome,
+  exportProjectReport,
   fetchProject,
   linkProjectWork,
   OUTCOME_STATUSES,
@@ -43,6 +44,7 @@ import {
   type ProjectStatus,
   type ProjectWorkItem,
 } from "@/lib/projects";
+import { downloadTextFile } from "@/lib/download";
 import { fetchWorkItems, type WorkItemSummary } from "@/lib/work";
 import { ReadRow } from "../profile/profile-section";
 import { useProfile } from "../profile/profile-provider";
@@ -140,6 +142,8 @@ export function ProjectDetailScreen({
   const [outcomeErrors, setOutcomeErrors] = useState<Record<string, string>>({});
 
   const [linkWorkId, setLinkWorkId] = useState("");
+
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -261,6 +265,19 @@ export function ProjectDetailScreen({
     }
   }
 
+  async function exportReport() {
+    setExporting(true);
+
+    try {
+      const result = await exportProjectReport(organisationId, projectId);
+      downloadTextFile(result.filename, result.contentType, result.content);
+    } catch (caught) {
+      setStatus({ tone: "error", message: failureMessage(caught) });
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function addMember() {
     if (!newMemberId) return;
     try {
@@ -340,6 +357,9 @@ export function ProjectDetailScreen({
         actions={
           <div className="flex items-center gap-3">
             <ProjectStatusPill status={project.status} />
+            <Button variant="secondary" size="sm" onClick={() => void exportReport()} disabled={exporting}>
+              {exporting ? "Preparing…" : "Export report"}
+            </Button>
             <Link
               href="/projects"
               className="text-[12px] font-bold text-yz-neutral-600 underline-offset-4 hover:text-yz-ink hover:underline"

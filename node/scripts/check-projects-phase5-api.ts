@@ -620,6 +620,48 @@ check(
   launchEventTypes,
 );
 
+/* ---------------------------------------------------------- V1: reports */
+
+r = await call(`/api/projects/${orgA}/${launchProject.id}/reports`, json("GET", founder.token));
+check(
+  "a report summarises owner, team, outcomes, work, completion, timeline and activity",
+  r.status === 200 &&
+    typeof r.body.report?.owner?.fullName === "string" &&
+    Array.isArray(r.body.report?.team) &&
+    Array.isArray(r.body.report?.outcomes) &&
+    Array.isArray(r.body.report?.work) &&
+    typeof r.body.report?.completion?.percent === "number" &&
+    typeof r.body.report?.timeline !== "undefined" &&
+    Array.isArray(r.body.report?.activity),
+  r.body.report,
+);
+
+r = await call(`/api/projects/${orgA}/${launchProject.id}/reports`, json("GET", outsider.token));
+check("a non-member cannot read another org's project report", r.status === 404, r.status);
+
+r = await call(
+  `/api/projects/${orgA}/${launchProject.id}/reports/export`,
+  json("POST", founder.token, { format: "markdown" }),
+);
+check(
+  "the report can be exported as markdown",
+  r.status === 200 && typeof r.body.content === "string" && r.body.content.startsWith("#"),
+  { status: r.status },
+);
+
+r = await call(
+  `/api/projects/${orgA}/${launchProject.id}/reports/export`,
+  json("POST", founder.token, { format: "pdf" }),
+);
+check("an unsupported export format is rejected, not silently ignored", r.status === 422, r.body);
+
+r = await call(`/api/projects/${orgA}/${launchProject.id}/work-items`, json("GET", founder.token));
+check(
+  "the /work-items alias returns the same data as /work",
+  r.status === 200 && Array.isArray(r.body.workItems ?? r.body.work),
+  r.body,
+);
+
 /* --------------------------------------------------------------- teardown */
 
 await db("notifications")

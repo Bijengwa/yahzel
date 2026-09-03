@@ -6,6 +6,7 @@ import {
   listMyNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  removeNotification,
 } from "./notification.service.js";
 
 function handleFailure(res: Response, error: unknown, context: string): void {
@@ -38,6 +39,28 @@ export async function markRead(req: Request, res: Response): Promise<void> {
       .json(await markNotificationRead(currentUserId(req), id));
   } catch (error) {
     handleFailure(res, error, "Failed to mark a notification read");
+  }
+}
+
+export async function destroy(req: Request, res: Response): Promise<void> {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(404).json({ message: "That notification could not be found." });
+      return;
+    }
+
+    const result = await removeNotification(currentUserId(req), id);
+
+    if (!result.deleted) {
+      res.status(404).json({ message: "That notification could not be found." });
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (error) {
+    handleFailure(res, error, "Failed to delete a notification");
   }
 }
 

@@ -13,6 +13,7 @@ import {
   people,
   show,
   standing,
+  update,
   withdraw,
 } from "./organisation.controller.js";
 
@@ -34,6 +35,7 @@ router.post("/invitations/:invitationId/accept", accept);
 router.post("/invitations/:invitationId/decline", decline);
 
 router.get("/:id", show);
+router.patch("/:id", update);
 
 // People. Membership is an organisation-level responsibility — nothing else
 // in Yahzel adds a person to an organisation.

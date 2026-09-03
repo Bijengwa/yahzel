@@ -1,6 +1,8 @@
 import type { NotificationRecord } from "./notification.record.js";
 import {
   countUnread,
+  deleteNotification,
+  findRecentDuplicate,
   insertNotification,
   listForRecipient,
   markAllRead,
@@ -43,6 +45,12 @@ export async function createNotification(input: {
   workItemId?: number | null;
   actionUrl?: string | null;
 }): Promise<PublicNotification> {
+  const duplicate = await findRecentDuplicate(input);
+
+  if (duplicate) {
+    return publicNotification(duplicate);
+  }
+
   const row = await insertNotification(input);
 
   const notification = publicNotification(row);
@@ -77,4 +85,13 @@ export async function markAllNotificationsRead(userId: number) {
   await markAllRead(userId);
 
   return { unreadCount: 0 };
+}
+
+export async function removeNotification(userId: number, id: number) {
+  const deleted = await deleteNotification(id, userId);
+
+  return {
+    deleted,
+    unreadCount: await countUnread(userId),
+  };
 }

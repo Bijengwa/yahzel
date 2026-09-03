@@ -165,6 +165,20 @@ export function fetchMyInvitations(): Promise<{ invitations: Invitation[] }> {
   return apiRequest("/api/organisations/invitations");
 }
 
+export type OrganisationPatch = {
+  name?: string;
+  type?: string;
+  country?: string | null;
+  description?: string | null;
+};
+
+export function updateOrganisation(
+  id: number,
+  patch: OrganisationPatch,
+): Promise<{ message: string; organisation: Organisation }> {
+  return apiRequest(`/api/organisations/${id}`, { method: "PATCH", body: patch });
+}
+
 export type RegisterOrganisationInput = {
   name: string;
   type: string;

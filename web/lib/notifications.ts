@@ -37,6 +37,12 @@ export function markAllNotificationsRead(): Promise<{ unreadCount: number }> {
   return apiRequest("/api/notifications/read-all", { method: "POST" });
 }
 
+export function deleteNotification(
+  id: number,
+): Promise<{ deleted: boolean; unreadCount: number }> {
+  return apiRequest(`/api/notifications/${id}`, { method: "DELETE" });
+}
+
 /* ------------------------------------------------------------------------
    Live stream
    --------------------------------------------------------------------- */

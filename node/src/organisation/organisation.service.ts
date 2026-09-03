@@ -38,6 +38,7 @@ import {
   listParticipation,
   updateInvitation,
   updateMembership,
+  updateOrganisation,
 } from "./organisation.repository.js";
 import { sendInvitationEmail } from "./organisation.email.js";
 import { createNotification } from "../notifications/notification.service.js";
@@ -451,6 +452,71 @@ export async function getOrganisation(userId: number, organisationId: number) {
       counts.get(organisation.id) ?? 0,
     ),
     membership: publicMembership(membership),
+  };
+}
+
+export type UpdateOrganisationInput = {
+  name?: unknown;
+  type?: unknown;
+  country?: unknown;
+  description?: unknown;
+};
+
+/** The organisation's own settings — its name, type, country and description. Admin only. */
+export async function updateOrganisationDetails(
+  userId: number,
+  organisationId: number,
+  input: UpdateOrganisationInput,
+) {
+  const { organisation, membership } = await requireMembership(
+    userId,
+    organisationId,
+  );
+
+  requireAdmin(membership);
+
+  const patch: Partial<{
+    name: string;
+    type: string;
+    country: string | null;
+    description: string | null;
+  }> = {};
+  const errors: FieldError[] = [];
+
+  if ("name" in input) {
+    const result = validateOrganisationName(input.name);
+    if (result.ok) patch.name = result.value;
+    else errors.push(...result.errors);
+  }
+
+  if ("type" in input) {
+    const result = validateOrganisationType(input.type);
+    if (result.ok) patch.type = result.value;
+    else errors.push(...result.errors);
+  }
+
+  if ("country" in input) {
+    const result = validateOrganisationCountry(input.country);
+    if (result.ok) patch.country = result.value;
+    else errors.push(...result.errors);
+  }
+
+  if ("description" in input) {
+    const result = validateDescription(input.description);
+    if (result.ok) patch.description = result.value;
+    else errors.push(...result.errors);
+  }
+
+  if (errors.length > 0) {
+    throw new OrganisationError(422, errors);
+  }
+
+  const updated = Object.keys(patch).length === 0 ? organisation : await updateOrganisation(organisationId, patch);
+  const counts = await countActiveMembers([updated.id]);
+
+  return {
+    message: "Organisation settings updated.",
+    organisation: publicOrganisation(updated, counts.get(updated.id) ?? 0),
   };
 }
 
