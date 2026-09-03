@@ -234,6 +234,37 @@ export function fetchProjectHistory(
   return apiRequest(`/api/projects/${organisationId}/${projectId}/events`);
 }
 
+export type ProjectReport = {
+  project: Project;
+  owner: { id: number; fullName: string; username: string } | null;
+  team: ProjectMember[];
+  outcomes: ProjectOutcome[];
+  work: WorkItem[];
+  completion: { percent: number; completedWork: number; totalWork: number };
+  timeline: { startDate: string | null; targetEndDate: string | null; createdAt: string };
+  health: ProjectHealth;
+  activity: ProjectEvent[];
+  generatedAt: string;
+};
+
+export function fetchProjectReport(
+  organisationId: number,
+  projectId: number,
+): Promise<{ report: ProjectReport }> {
+  return apiRequest(`/api/projects/${organisationId}/${projectId}/reports`);
+}
+
+export function exportProjectReport(
+  organisationId: number,
+  projectId: number,
+  format: "markdown" = "markdown",
+): Promise<{ message: string; filename: string; contentType: string; content: string }> {
+  return apiRequest(`/api/projects/${organisationId}/${projectId}/reports/export`, {
+    method: "POST",
+    body: { format },
+  });
+}
+
 /* ------------------------------------------------------------------------
    Members
    --------------------------------------------------------------------- */

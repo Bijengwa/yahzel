@@ -1,4 +1,5 @@
 import { apiRequest } from "./api";
+import { downloadTextFile } from "./download";
 
 /* ------------------------------------------------------------------------
    Skills / Education / Certifications — self only, under /api/profile
@@ -175,17 +176,7 @@ export function exportCv(
 
 /** Triggers a browser download of the exported CV. */
 export function downloadCv(result: { filename: string; contentType: string; content: string }) {
-  const blob = new Blob([result.content], { type: result.contentType });
-  const url = URL.createObjectURL(blob);
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = result.filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  URL.revokeObjectURL(url);
+  downloadTextFile(result.filename, result.contentType, result.content);
 }
 
 export type PortfolioVisibility = "private" | "organisation" | "public";
