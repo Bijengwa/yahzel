@@ -34,6 +34,9 @@ export type Profile = {
 
   profilePictureUrl: string | null;
 
+  headline: string | null;
+  summary: string | null;
+
   createdAt: string;
   completion: ProfileCompletion;
 };
@@ -51,6 +54,8 @@ export type ProfilePatch = {
   gender?: string | null;
   country?: string | null;
   phoneNumber?: string | null;
+  headline?: string | null;
+  summary?: string | null;
 };
 
 export function saveProfile(patch: ProfilePatch): Promise<ProfileResponse> {
