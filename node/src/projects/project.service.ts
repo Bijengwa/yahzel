@@ -409,6 +409,161 @@ export async function listProjectHistory(
   return { events: events.map(publicEvent) };
 }
 
+/**
+ * A single document summarising the Project — owner, team, outcomes, work,
+ * completion, timeline, activity and health — assembled from the same reads
+ * getProjectOverview already does. View-level access, same as health/events:
+ * a report is read-only information, not a management action.
+ */
+export async function getProjectReport(
+  userId: number,
+  organisationId: number,
+  projectId: number,
+) {
+  const { project } = await requireProjectView(userId, organisationId, projectId);
+
+  const [owner, memberRows, outcomes, workItems, events] = await Promise.all([
+    findProfileById(project.owner_profile_id),
+    listProjectMembers(project.id),
+    listOutcomesForProject(project.id),
+    listWorkItemsForProject(project.id),
+    listProjectEvents(project.id, 50),
+  ]);
+
+  const health = await computeProjectHealth(project, outcomes);
+
+  const completionPercent =
+    health.totalWork === 0 ? 0 : Math.round((health.completedWork / health.totalWork) * 100);
+
+  return {
+    report: {
+      project: publicProject(project),
+      owner: owner
+        ? { id: owner.id, fullName: owner.full_name, username: owner.username }
+        : null,
+      team: memberRows.map(publicMember),
+      outcomes: outcomes.map(publicOutcome),
+      work: workItems.map(publicWorkItem),
+      completion: {
+        percent: completionPercent,
+        completedWork: health.completedWork,
+        totalWork: health.totalWork,
+      },
+      timeline: {
+        startDate: project.start_date,
+        targetEndDate: project.target_end_date,
+        createdAt: project.created_at,
+      },
+      health,
+      activity: events.map(publicEvent),
+      generatedAt: new Date().toISOString(),
+    },
+  };
+}
+
+function toDateOnly(value: unknown): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = value instanceof Date ? value : new Date(String(value));
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
+function escapeMd(value: string): string {
+  return value.replace(/([_*`[\]])/g, "\\$1");
+}
+
+function renderProjectReportMarkdown(
+  report: Awaited<ReturnType<typeof getProjectReport>>["report"],
+): string {
+  const lines: string[] = [];
+
+  lines.push(`# ${escapeMd(report.project.name)}`);
+  lines.push(`Status: ${report.project.status} · Generated ${toDateOnly(report.generatedAt)}`);
+  lines.push("");
+
+  if (report.project.description) {
+    lines.push(report.project.description, "");
+  }
+
+  lines.push(
+    `**Owner:** ${report.owner ? escapeMd(report.owner.fullName) : "Unassigned"}`,
+    `**Timeline:** ${toDateOnly(report.timeline.startDate) ?? "?"} – ${
+      toDateOnly(report.timeline.targetEndDate) ?? "No target date"
+    }`,
+    `**Completion:** ${report.completion.percent}% (${report.completion.completedWork} of ${report.completion.totalWork} work items done)`,
+    "",
+  );
+
+  lines.push("## Health", "");
+  for (const signal of report.health.signals) {
+    lines.push(`- ${escapeMd(signal)}`);
+  }
+  lines.push("");
+
+  if (report.team.length > 0) {
+    lines.push("## Team", "");
+    for (const member of report.team) {
+      lines.push(`- ${escapeMd(member.name)}`);
+    }
+    lines.push("");
+  }
+
+  if (report.outcomes.length > 0) {
+    lines.push("## Outcomes", "");
+    for (const outcome of report.outcomes) {
+      lines.push(`- [${outcome.status}] ${escapeMd(outcome.title)}`);
+    }
+    lines.push("");
+  }
+
+  if (report.work.length > 0) {
+    lines.push("## Work", "");
+    for (const item of report.work) {
+      lines.push(`- [${item.status}] ${escapeMd(item.title)}`);
+    }
+    lines.push("");
+  }
+
+  if (report.activity.length > 0) {
+    lines.push("## Recent activity", "");
+    for (const event of report.activity.slice(0, 20)) {
+      lines.push(`- ${toDateOnly(event.createdAt) ?? "?"} — ${escapeMd(event.message)}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+export async function exportProjectReport(
+  userId: number,
+  organisationId: number,
+  projectId: number,
+  format: unknown,
+) {
+  const requestedFormat = String(format ?? "markdown").trim().toLowerCase();
+
+  if (requestedFormat !== "markdown") {
+    throw ProjectError.field(
+      422,
+      "format",
+      "Only markdown export is available right now.",
+    );
+  }
+
+  const { report } = await getProjectReport(userId, organisationId, projectId);
+
+  return {
+    message: "The project report is ready to download.",
+    filename: `${report.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-report.md`,
+    contentType: "text/markdown",
+    content: renderProjectReportMarkdown(report),
+  };
+}
+
 /* ------------------------------------------------------------------------
    Create
    --------------------------------------------------------------------- */

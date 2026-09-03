@@ -13,6 +13,8 @@ import {
   outcomesCreate,
   outcomesIndex,
   outcomesUpdate,
+  report,
+  reportExport,
   show,
   unarchive,
   update,
@@ -38,6 +40,8 @@ router.post("/:organisationId/:projectId/archive", archive);
 router.post("/:organisationId/:projectId/unarchive", unarchive);
 router.get("/:organisationId/:projectId/health", health);
 router.get("/:organisationId/:projectId/events", history);
+router.get("/:organisationId/:projectId/reports", report);
+router.post("/:organisationId/:projectId/reports/export", reportExport);
 
 router.get("/:organisationId/:projectId/members", membersIndex);
 router.post("/:organisationId/:projectId/members", membersCreate);
@@ -54,6 +58,8 @@ router.patch(
 );
 
 router.get("/:organisationId/:projectId/work", workIndex);
+// Alias matching the V1 spec's literal endpoint name; same handler as /work.
+router.get("/:organisationId/:projectId/work-items", workIndex);
 router.post("/:organisationId/:projectId/work/:workItemId/link", workLink);
 router.post("/:organisationId/:projectId/work/:workItemId/unlink", workUnlink);
 
