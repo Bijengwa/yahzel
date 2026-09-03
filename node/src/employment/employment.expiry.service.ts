@@ -85,7 +85,7 @@ export type PublicExpiringContract = ReturnType<typeof publicExpiringContract>;
  * re-notifying admins on every call), and returns the current list. History
  * is never touched: nothing here edits a contract or an employment record.
  */
-async function computeAndSyncExpiry(
+export async function computeAndSyncExpiry(
   organisationId: number,
 ): Promise<PublicExpiringContract[]> {
   const settings = await ensureWorkSettings(organisationId);

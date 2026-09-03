@@ -119,7 +119,7 @@ export type StalledDiagnostic = ReturnType<typeof buildDiagnostic>;
  * never re-notifies for the same standing condition, and an item that
  * recovers has its notice cleared so a later relapse is treated as new.
  */
-async function computeAndSync(organisationId: number): Promise<StalledDiagnostic[]> {
+export async function computeAndSync(organisationId: number): Promise<StalledDiagnostic[]> {
   const settings = await ensureWorkSettings(organisationId);
   const candidates = await listOpenWorkItemsForOrganisation(organisationId);
   const activeByItem = await listActiveAssignments(candidates.map((item) => item.id));

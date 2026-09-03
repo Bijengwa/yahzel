@@ -94,6 +94,15 @@ export async function updateEmploymentRecord(
   return row;
 }
 
+/** Every employment record in an organisation — Activity's feed and Person History. */
+export function listEmploymentRecordsForOrganisation(
+  organisationId: number,
+): Promise<EmploymentRecordRecord[]> {
+  return db<EmploymentRecordRecord>(EMPLOYMENT_RECORDS)
+    .where({ organisation_id: organisationId })
+    .orderBy("created_at", "desc");
+}
+
 /**
  * Closes whichever employment record and contract are still open for a
  * membership — used when the membership itself is concluded, so a person is
@@ -207,6 +216,15 @@ export async function updateContract(
   }
 
   return row;
+}
+
+/** Every contract in an organisation — Activity's feed. */
+export function listContractsForOrganisation(
+  organisationId: number,
+): Promise<ContractRecord[]> {
+  return db<ContractRecord>(CONTRACTS)
+    .where({ organisation_id: organisationId })
+    .orderBy("created_at", "desc");
 }
 
 export function withEmploymentTransaction<T>(

@@ -118,6 +118,19 @@ export function listOpenWorkItemsForOrganisation(
 }
 
 /**
+ * Every Work Item in an organisation, any status — Overview/Search/Activity
+ * need the full set, not just the open ones listOpenWorkItemsForOrganisation
+ * already serves the stalled scan.
+ */
+export function listWorkItemsForOrganisation(
+  organisationId: number,
+): Promise<WorkItemRecord[]> {
+  return db<WorkItemRecord>(ITEMS)
+    .where({ organisation_id: organisationId })
+    .orderBy("created_at", "desc");
+}
+
+/**
  * Every Work Item linked to a project, regardless of status — the raw set
  * Phase 5's project health/summary derives its counts from. Project is a
  * coordination layer, never a second store of what Work exists.
@@ -405,6 +418,15 @@ export async function transitionReport(
   return row;
 }
 
+/** Every report in an organisation — Activity's feed and Person History's authored-reports view both filter this in memory rather than each needing their own query. */
+export function listReportsForOrganisation(
+  organisationId: number,
+): Promise<WorkReportRecord[]> {
+  return db<WorkReportRecord>(REPORTS)
+    .where({ organisation_id: organisationId })
+    .orderBy("created_at", "desc");
+}
+
 /* ------------------------------------------------------------------------
    Report attachments
    --------------------------------------------------------------------- */
@@ -468,4 +490,13 @@ export async function listAttachmentsForReports(
   }
 
   return grouped;
+}
+
+/** Every report attachment in an organisation — same reuse as listReportsForOrganisation. */
+export function listAttachmentsForOrganisation(
+  organisationId: number,
+): Promise<WorkReportAttachmentRecord[]> {
+  return db<WorkReportAttachmentRecord>(ATTACHMENTS)
+    .where({ organisation_id: organisationId })
+    .orderBy("created_at", "desc");
 }

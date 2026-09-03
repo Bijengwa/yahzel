@@ -81,7 +81,7 @@ const notAllowed = () =>
    Serialisation
    --------------------------------------------------------------------- */
 
-function publicProject(record: ProjectRecord) {
+export function publicProject(record: ProjectRecord) {
   return {
     id: record.id,
     organisationId: record.organisation_id,
@@ -99,7 +99,7 @@ function publicProject(record: ProjectRecord) {
   };
 }
 
-function publicOutcome(record: ProjectOutcomeRecord) {
+export function publicOutcome(record: ProjectOutcomeRecord) {
   return {
     id: record.id,
     projectId: record.project_id,

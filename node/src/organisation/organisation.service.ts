@@ -124,7 +124,7 @@ function publicOrganisation(
  *                        highest-ranking one.
  *   title              — what the organisation itself calls the person.
  */
-function publicMembership(record: OrganisationMemberRecord) {
+export function publicMembership(record: OrganisationMemberRecord) {
   return {
     id: record.id,
 

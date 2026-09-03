@@ -52,6 +52,15 @@ export function listActiveOccupancies(
   });
 }
 
+/** Every occupancy an organisation has ever had (current and ended) — Activity's feed. */
+export function listOccupancyHistoryForOrganisation(
+  organisationId: number,
+): Promise<PositionOccupancyRecord[]> {
+  return db<PositionOccupancyRecord>(OCCUPANCIES)
+    .where({ organisation_id: organisationId })
+    .orderBy("starts_at", "desc");
+}
+
 /** Every occupancy a position has ever had, newest first. */
 export function listOccupancyHistoryByPosition(
   positionId: number,

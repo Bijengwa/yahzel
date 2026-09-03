@@ -32,6 +32,18 @@ export function listProjects(
     .orderBy("created_at", "desc");
 }
 
+/** Every project in an organisation that a profile is a contributor on (not owner — see project.record.ts's own note that the owner is not duplicated into project_members). */
+export function listProjectMembershipsForProfile(
+  organisationId: number,
+  profileId: number,
+): Promise<ProjectRecord[]> {
+  return db<ProjectRecord>(PROJECTS)
+    .join(MEMBERS, `${MEMBERS}.project_id`, `${PROJECTS}.id`)
+    .where(`${MEMBERS}.profile_id`, profileId)
+    .andWhere(`${PROJECTS}.organisation_id`, organisationId)
+    .select<ProjectRecord[]>(`${PROJECTS}.*`);
+}
+
 /**
  * A plain project row, used both by the read endpoints and by the org-isolation
  * check work.service runs before it lets a Work Item reference a project.
@@ -237,6 +249,15 @@ export async function updateOutcome(
   return row;
 }
 
+/** Every outcome across an organisation — Search and Person History (owned outcomes). */
+export function listOutcomesForOrganisation(
+  organisationId: number,
+): Promise<ProjectOutcomeRecord[]> {
+  return db<ProjectOutcomeRecord>(OUTCOMES)
+    .where({ organisation_id: organisationId })
+    .orderBy("created_at", "desc");
+}
+
 /* ------------------------------------------------------------------------
    Events — the traceable timeline. Append-only; nothing here is ever
    updated or deleted.
@@ -273,6 +294,17 @@ export function listProjectEvents(
 ): Promise<ProjectEventRecord[]> {
   return db<ProjectEventRecord>(EVENTS)
     .where({ project_id: projectId })
+    .orderBy("created_at", "desc")
+    .limit(limit);
+}
+
+/** Every project event across an organisation, newest first — Activity's feed. */
+export function listProjectEventsForOrganisation(
+  organisationId: number,
+  limit = 200,
+): Promise<ProjectEventRecord[]> {
+  return db<ProjectEventRecord>(EVENTS)
+    .where({ organisation_id: organisationId })
     .orderBy("created_at", "desc")
     .limit(limit);
 }

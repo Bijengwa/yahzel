@@ -37,8 +37,8 @@ export type ProjectHealth = {
   signals: string[];
 };
 
-const APPROACHING_TARGET_DAYS = 14;
-const INACTIVE_PROJECT_DAYS = 8;
+export const APPROACHING_TARGET_DAYS = 14;
+export const INACTIVE_PROJECT_DAYS = 8;
 
 function isOpen(item: WorkItemRecord): boolean {
   return item.status !== "done" && item.status !== "cancelled";
