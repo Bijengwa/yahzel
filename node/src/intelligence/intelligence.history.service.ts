@@ -55,7 +55,7 @@ export async function getMemberOperationalHistory(
   );
 
   let workItems: ReturnType<typeof publicWorkItem>[] = [];
-  let reports: { id: number; workItemId: number; state: string; submittedAt: string | null; reviewedAt: string | null }[] = [];
+  let reports: { id: number; workItemId: number; state: string; verified: boolean; submittedAt: string | null; reviewedAt: string | null }[] = [];
   let evidence: { id: number; workItemId: number; fileName: string; createdAt: string }[] = [];
   let projects: ReturnType<typeof publicProject>[] = [];
   let outcomesOwned: ReturnType<typeof publicOutcome>[] = [];
@@ -73,6 +73,9 @@ export async function getMemberOperationalHistory(
         id: r.id,
         workItemId: r.work_item_id,
         state: r.state,
+        // "Verified" means the report passed review — this is the only
+        // state that should ever feed CV/portfolio generation.
+        verified: r.state === "accepted",
         submittedAt: r.submitted_at,
         reviewedAt: r.reviewed_at,
       }));
