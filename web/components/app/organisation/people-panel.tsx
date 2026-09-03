@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -225,6 +226,15 @@ export function PeoplePanel({
 
           {member.status !== "active" && (
             <MembershipStatusPill status={member.status} />
+          )}
+
+          {canAdminister && (
+            <Link
+              href={`/organisation/${organisationId}/people/${member.id}/history`}
+              className="text-[12px] font-bold text-yz-neutral-600 underline-offset-4 hover:text-yz-ink hover:underline"
+            >
+              History
+            </Link>
           )}
 
           {canAdminister && (
