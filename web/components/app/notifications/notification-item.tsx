@@ -12,9 +12,11 @@ import { describeRelativeTime, type YzNotification } from "@/lib/notifications";
 export function NotificationItem({
   notification,
   onOpen,
+  onDelete,
 }: {
   notification: YzNotification;
   onOpen: (notification: YzNotification) => void;
+  onDelete: (notification: YzNotification) => void;
 }) {
   const body = (
     <>
@@ -44,23 +46,29 @@ export function NotificationItem({
   );
 
   const className =
-    "flex w-full items-start gap-2 py-2.5 text-left transition-colors duration-150 hover:bg-yz-neutral-100";
-
-  if (notification.actionUrl) {
-    return (
-      <Link
-        href={notification.actionUrl}
-        onClick={() => onOpen(notification)}
-        className={className}
-      >
-        {body}
-      </Link>
-    );
-  }
+    "flex flex-1 items-start gap-2 py-2.5 text-left transition-colors duration-150 hover:bg-yz-neutral-100";
 
   return (
-    <button type="button" onClick={() => onOpen(notification)} className={className}>
-      {body}
-    </button>
+    <div className="flex w-full items-start gap-1">
+      {notification.actionUrl ? (
+        <Link href={notification.actionUrl} onClick={() => onOpen(notification)} className={className}>
+          {body}
+        </Link>
+      ) : (
+        <button type="button" onClick={() => onOpen(notification)} className={className}>
+          {body}
+        </button>
+      )}
+
+      <button
+        type="button"
+        aria-label="Delete notification"
+        title="Delete"
+        onClick={() => onDelete(notification)}
+        className="mt-2.5 shrink-0 px-1.5 text-[13px] text-yz-neutral-400 hover:text-yz-danger-ink"
+      >
+        ×
+      </button>
+    </div>
   );
 }

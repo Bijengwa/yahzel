@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PageHeader, Panel, PanelGroup, StatusMessage } from "@/components/ui/panel";
 import { ApiError } from "@/lib/api";
@@ -11,6 +11,14 @@ import { InvitationNotificationItem } from "./invitation-notification-item";
 import { NotificationItem } from "./notification-item";
 
 const INVITATION_TYPE = "organisation.invited";
+
+type ReadFilter = "all" | "unread" | "read";
+
+const READ_FILTER_LABELS: Record<ReadFilter, string> = {
+  all: "All",
+  unread: "Unread",
+  read: "Read",
+};
 
 /**
  * The dedicated /notifications page: invitations you can still act on above
@@ -23,11 +31,14 @@ const INVITATION_TYPE = "organisation.invited";
  * resolved elsewhere.
  */
 export function NotificationsScreen() {
-  const { notifications, unreadCount, loading, markRead, markAllRead } =
+  const { notifications, unreadCount, loading, markRead, markAllRead, remove } =
     useNotifications();
 
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [readFilter, setReadFilter] = useState<ReadFilter>("all");
 
   const loadInvitations = useCallback(async () => {
     try {
@@ -51,12 +62,26 @@ export function NotificationsScreen() {
     (item) => item.type === INVITATION_TYPE,
   );
 
-  const otherNotifications = notifications.filter(
-    (item) => item.type !== INVITATION_TYPE,
-  );
+  const otherNotifications = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return notifications.filter((item) => {
+      if (item.type === INVITATION_TYPE) return false;
+      if (readFilter === "unread" && item.read) return false;
+      if (readFilter === "read" && !item.read) return false;
+      if (query && !item.message.toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [notifications, search, readFilter]);
+
+  const hasOtherNotifications = notifications.some((item) => item.type !== INVITATION_TYPE);
 
   function handleOpenOther(notification: YzNotification) {
     void markRead(notification.id);
+  }
+
+  function handleDeleteOther(notification: YzNotification) {
+    void remove(notification.id);
   }
 
   function handleAnswered(notification: YzNotification, invitationId: number) {
@@ -86,8 +111,7 @@ export function NotificationsScreen() {
       <Panel>
         {loading ? (
           <p className="py-4 text-[13px] text-yz-neutral-600">Loading…</p>
-        ) : invitationNotifications.length === 0 &&
-          otherNotifications.length === 0 ? (
+        ) : invitationNotifications.length === 0 && !hasOtherNotifications ? (
           <p className="py-4 text-[13px] leading-6 text-yz-neutral-600">
             Nothing new here.
           </p>
@@ -113,18 +137,51 @@ export function NotificationsScreen() {
               </PanelGroup>
             )}
 
-            {otherNotifications.length > 0 && (
-              <PanelGroup title="OTHER">
-                <ul className="divide-y divide-yz-neutral-200">
-                  {otherNotifications.map((notification) => (
-                    <li key={notification.id}>
-                      <NotificationItem
-                        notification={notification}
-                        onOpen={handleOpenOther}
-                      />
-                    </li>
-                  ))}
-                </ul>
+            {hasOtherNotifications && (
+              <PanelGroup
+                title="OTHER"
+                trailing={
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Search…"
+                      aria-label="Search notifications"
+                      className="h-7 w-36 rounded-sm border border-yz-neutral-300 bg-yz-panel px-2 text-[12px] text-yz-ink outline-none transition-colors duration-150 focus:border-yz-ink"
+                    />
+                    <select
+                      value={readFilter}
+                      onChange={(event) => setReadFilter(event.target.value as ReadFilter)}
+                      aria-label="Filter by read state"
+                      className="h-7 rounded-sm border border-yz-neutral-300 bg-yz-panel px-1.5 text-[12px] text-yz-ink outline-none transition-colors duration-150 focus:border-yz-ink"
+                    >
+                      {(Object.keys(READ_FILTER_LABELS) as ReadFilter[]).map((key) => (
+                        <option key={key} value={key}>
+                          {READ_FILTER_LABELS[key]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                }
+              >
+                {otherNotifications.length === 0 ? (
+                  <p className="py-2 text-[13px] text-yz-neutral-500">
+                    Nothing matches this search or filter.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-yz-neutral-200">
+                    {otherNotifications.map((notification) => (
+                      <li key={notification.id}>
+                        <NotificationItem
+                          notification={notification}
+                          onOpen={handleOpenOther}
+                          onDelete={handleDeleteOther}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </PanelGroup>
             )}
           </>
