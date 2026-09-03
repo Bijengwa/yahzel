@@ -427,6 +427,26 @@ export function listReportsForOrganisation(
     .orderBy("created_at", "desc");
 }
 
+/**
+ * Every accepted report this profile has ever authored, across every
+ * organisation, joined with its Work Item for CV context. "Accepted" is the
+ * one state that counts as verified — a CV is built from this, and nothing
+ * else, for its work history.
+ */
+export function listAcceptedReportsForProfile(
+  profileId: number,
+): Promise<(WorkReportRecord & { work_item: WorkItemRecord })[]> {
+  return db<WorkReportRecord>(REPORTS)
+    .join(ITEMS, `${ITEMS}.id`, `${REPORTS}.work_item_id`)
+    .where(`${REPORTS}.author_profile_id`, profileId)
+    .where(`${REPORTS}.state`, "accepted")
+    .orderBy(`${REPORTS}.reviewed_at`, "desc")
+    .select<(WorkReportRecord & { work_item: WorkItemRecord })[]>(
+      `${REPORTS}.*`,
+      db.raw(`row_to_json(${ITEMS}.*) as work_item`),
+    );
+}
+
 /* ------------------------------------------------------------------------
    Report attachments
    --------------------------------------------------------------------- */

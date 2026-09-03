@@ -19,6 +19,7 @@
     "check:work:phase4": "tsx scripts/check-work-phase4-api.ts",
     "check:projects": "tsx scripts/check-projects-phase5-api.ts",
     "check:intelligence": "tsx scripts/check-intelligence-phase6-api.ts",
+    "check:cv": "tsx scripts/check-cv-portfolio-api.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

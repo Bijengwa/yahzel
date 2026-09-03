@@ -9,6 +9,7 @@ import intelligenceRoutes from "./intelligence/intelligence.routes.js";
 import notificationRoutes from "./notifications/notification.routes.js";
 import organisationRoutes from "./organisation/organisation.routes.js";
 import profileRoutes from "./profile/profile.routes.js";
+import profileCvRoutes from "./profile/profile.cv.routes.js";
 import projectRoutes from "./projects/project.routes.js";
 import referenceRoutes from "./reference.routes.js";
 import workRoutes from "./work/work.routes.js";
@@ -24,6 +25,7 @@ app.use("/uploads", express.static(UPLOAD_ROOT, { maxAge: "1h" }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/profiles", profileCvRoutes);
 app.use("/api/organisations", organisationRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/work", workRoutes);
