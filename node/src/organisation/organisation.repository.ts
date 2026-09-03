@@ -30,6 +30,27 @@ export function findOrganisationById(id: number) {
   return db<OrganisationRecord>(ORGS).where({ id }).first();
 }
 
+export async function updateOrganisation(
+  id: number,
+  patch: Partial<{
+    name: string;
+    type: string;
+    country: string | null;
+    description: string | null;
+  }>,
+): Promise<OrganisationRecord> {
+  const [row] = await db<OrganisationRecord>(ORGS)
+    .where({ id })
+    .update({ ...patch, updated_at: db.fn.now() })
+    .returning("*");
+
+  if (!row) {
+    throw new Error(`Organisation ${id} disappeared during update.`);
+  }
+
+  return row;
+}
+
 /**
  * The organisation and its first membership are one fact, so they are written
  * in one transaction.
