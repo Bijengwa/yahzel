@@ -21,6 +21,7 @@
     "check:intelligence": "tsx scripts/check-intelligence-phase6-api.ts",
     "check:cv": "tsx scripts/check-cv-portfolio-api.ts",
     "check:hiring": "tsx scripts/check-hiring-api.ts",
+    "check:notifications": "tsx scripts/check-notifications-api.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
