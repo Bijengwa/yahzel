@@ -14,7 +14,9 @@ import {
 import { ApiError } from "@/lib/api";
 import { changePassword } from "@/lib/profile";
 import { ThemeSwitch } from "@/components/theme/theme-provider";
+import { WorkSettingsScreen } from "../work/work-settings-screen";
 import { LogoutDialog } from "./logout-dialog";
+import { OrganizationSettingsPanel } from "./organization-settings-panel";
 
 type Status = { tone: "ok" | "error"; message: string } | null;
 
@@ -147,45 +149,93 @@ function PasswordRow() {
   );
 }
 
+const TABS = [
+  { value: "account", label: "Account" },
+  { value: "organization", label: "Organization" },
+  { value: "work", label: "Work" },
+] as const;
+
+type Tab = (typeof TABS)[number]["value"];
+
+function AccountTab({ onLogout }: { onLogout: () => void }) {
+  return (
+    <Panel>
+      <PanelGroup title="Appearance">
+        <PanelRow
+          label="Theme"
+          description="System follows your device's light/dark setting."
+          trailing={<ThemeSwitch />}
+        />
+      </PanelGroup>
+
+      <PanelGroup title="Password">
+        <PasswordRow />
+      </PanelGroup>
+
+      <PanelGroup title="Log out">
+        <PanelRow
+          label="Sign out of Yahzel"
+          description="You'll need to sign in again on this device."
+          trailing={
+            <Button variant="danger" size="sm" onClick={onLogout}>
+              Log out
+            </Button>
+          }
+        />
+      </PanelGroup>
+    </Panel>
+  );
+}
+
+/**
+ * One coherent Settings area: Account (this device's theme, credentials,
+ * session), Organization (name/type/country/description — admin only), and
+ * Work (Phase 4's overdue/stalled thresholds, unchanged, just reachable from
+ * here too rather than only from Work's own nav). Hiring, People/HR and
+ * Advanced are not shown: nothing in Yahzel today is actually configurable
+ * under those headings, and an empty tab would be a placeholder page.
+ */
 export function SettingsScreen() {
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>("account");
 
   return (
     <div className="space-y-3">
       <PageHeader
         title="Settings"
-        description="Appearance, sign-in credentials and session for this device."
+        description="Account, organisation and work configuration in one place."
       />
 
-      <Panel>
-        <PanelGroup title="Appearance">
-          <PanelRow
-            label="Theme"
-            description="System follows your device's light/dark setting."
-            trailing={<ThemeSwitch />}
-          />
-        </PanelGroup>
+      <div
+        role="tablist"
+        aria-label="Settings sections"
+        className="flex items-center gap-1 border-b border-yz-neutral-200"
+      >
+        {TABS.map((option) => {
+          const active = tab === option.value;
 
-        <PanelGroup title="Password">
-          <PasswordRow />
-        </PanelGroup>
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(option.value)}
+              className={`-mb-px border-b-2 px-2.5 py-2 text-[13px] font-semibold transition-colors duration-150 ${
+                active
+                  ? "border-yz-accent text-yz-ink"
+                  : "border-transparent text-yz-neutral-600 hover:text-yz-ink"
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
 
-        <PanelGroup title="Log out">
-          <PanelRow
-            label="Sign out of Yahzel"
-            description="You'll need to sign in again on this device."
-            trailing={
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => setLogoutOpen(true)}
-              >
-                Log out
-              </Button>
-            }
-          />
-        </PanelGroup>
-      </Panel>
+      {tab === "account" && <AccountTab onLogout={() => setLogoutOpen(true)} />}
+      {tab === "organization" && <OrganizationSettingsPanel />}
+      {tab === "work" && <WorkSettingsScreen />}
 
       <LogoutDialog open={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </div>
